@@ -117,7 +117,7 @@ function TopBar() {
 
         <div className="menu-container" ref={dropdownRef}>
           <button className="menu-button" onClick={toggleMenu}>
-            More Options{" "}
+            <p>More Options{" "}</p>
             <span className="menu-icon">
               {menuOpen ? (
                 <FaChevronUp size={14} />

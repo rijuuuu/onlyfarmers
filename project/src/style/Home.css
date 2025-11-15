@@ -1,7 +1,7 @@
 /* Layout for Dashboard (left) and Chatbot (right) */
 .home-layout {
   display: flex;
-  height: 100%;
+  height: calc(100vh - 70px);
   width: 100%;
   padding-left: 20px;
 }

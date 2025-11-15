@@ -37,7 +37,7 @@
 .marketLink {
   color: #6c584c;
   font-weight: 600;
-  font-size: 1rem;
+  font-size: 12px;
   cursor: pointer;
 }
 
@@ -50,7 +50,7 @@
   border: none;
   color: #6c584c;
   font-weight: 600;
-  font-size: 1rem;
+  font-size: 12px;
   display: flex;
   align-items: center;
   cursor: pointer;

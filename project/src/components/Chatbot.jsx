@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { useLocation } from "react-router-dom"; // ADDED
 import "../style/Chatbot.css";
 
 export default function ChatBox() {
@@ -9,10 +10,25 @@ export default function ChatBox() {
   const [error, setError] = useState("");
   const msgsRef = useRef(null);
 
+  // Get current location object
+  const location = useLocation(); // ADDED
+
   // Default collapsed on mobile
   useEffect(() => {
     if (window.innerWidth <= 900) setIsOpen(false);
   }, []);
+
+  // FIXED: Collapse on navigation, but open specifically on the Home page.
+  useEffect(() => {
+    // Check if the current path is the homepage (either "/" or "/home")
+    if (location.pathname === "/" || location.pathname === "/home") {
+      // Open the chatbot on the homepage
+      setIsOpen(true);
+    } else {
+      // Close the chatbot on all other pages
+      setIsOpen(false);
+    }
+  }, [location.pathname]); // Triggered when the route path changes
 
   // Auto-scroll to bottom
   useEffect(() => {

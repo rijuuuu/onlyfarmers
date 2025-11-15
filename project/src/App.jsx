@@ -1,3 +1,4 @@
+// project/src/App.jsx
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import React from "react";
 
@@ -7,6 +8,7 @@ import Login from "./components/Login";
 import SignUp from "./components/SignUp";
 import Buyer from "./components/Buyer";
 import Seller from "./components/Seller";
+import ChatBox from "./components/Chatbot"; // Import the Chatbot
 
 export default function App() {
   return (
@@ -18,17 +20,16 @@ export default function App() {
         <Route path="/" element={<Home />} />
         <Route path="/home" element={<Home />} />
 
-        {/* Market Routes */}
-        {/* <Route path="/farmer" element={<Farmer />} />   Farmer Dashboard */}
-        {/* <Route path="/seller" element={<Seller />} />   Seller Dashboard */}
-
         {/* Auth */}
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<SignUp />} />
+        
         {/* Market Routes */}
         <Route path="/buyer" element={<Buyer />} />
         <Route path="/seller" element={<Seller />} />
       </Routes>
+
+      <ChatBox /> {/* RENDERED GLOBALLY */}
     </Router>
   );
 }
