@@ -53,8 +53,19 @@ ABI = [
     }
 ]
 
+# Helper function 1 (Original, used for general text cleaning)
 def normalize_text(t: str) -> str:
     return str(t or "").lower().replace(" ", "").replace("-", "").replace("_", "")
+
+# FIX: Helper function 2 (New, for strict alphanumeric ID cleaning/comparison)
+def clean_alphanumeric(t: str) -> str:
+    """Removes all non-alphanumeric characters and converts to lowercase for robust ID matching."""
+    t_str = str(t or "").lower()
+    cleaned = ""
+    for char in t_str:
+        if char.isalnum():
+            cleaned += char
+    return cleaned
 
 def get_web3():
     if not INFURA_URL:
@@ -115,6 +126,7 @@ def load_sellers(path="data/FPC_sample_alipurduar.csv"):
         if c not in df:
             df[c] = ""
         df[c] = df[c].fillna("").astype(str)
+    # This creates the alphanumeric seller_id
     df["seller_id"] = df["FPC_Name"].astype(str).str.replace(r"[^a-zA-Z0-9]", "", regex=True)
     return df
 
@@ -262,12 +274,22 @@ def create_request():
 @app.get("/api/requests")
 def list_requests():
     farmer_id = request.args.get("farmer_id")
-    seller_id = request.args.get("seller_id")
+    seller_id_input = request.args.get("seller_id")
     results = REQUESTS
+
     if farmer_id:
         results = [r for r in results if r.get("farmer_id") == farmer_id]
-    if seller_id:
-        results = [r for r in results if r.get("seller_id") == seller_id]
+
+    # FIX: Use the new clean_alphanumeric for robust, case-insensitive comparison
+    if seller_id_input:
+        normalized_input = clean_alphanumeric(seller_id_input)
+        
+        results = [
+            r for r in results
+            # Normalize the stored seller_id to match the cleaned input
+            if clean_alphanumeric(r.get("seller_id")) == normalized_input
+        ]
+
     return jsonify(results), 200
 
 @app.post("/api/accept/<rid>")
@@ -290,8 +312,19 @@ def reject_request(rid):
 
 @app.get("/api/notifications")
 def notifications():
-    seller = request.args.get("seller")
-    return jsonify([n for n in NOTIFS if n.get("to") == seller]), 200
+    seller_input = request.args.get("seller")
+    
+    if not seller_input:
+        return jsonify([]), 200 
+
+    # FIX: Use the new clean_alphanumeric for robust, case-insensitive comparison
+    normalized_seller = clean_alphanumeric(seller_input)
+    
+    return jsonify([
+        n for n in NOTIFS 
+        # Normalize the stored 'to' field (seller_id) to match the cleaned input
+        if clean_alphanumeric(n.get("to")) == normalized_seller
+    ]), 200
 
 @app.post("/api/chat/send")
 def send_message():
