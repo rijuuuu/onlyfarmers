@@ -1,3 +1,6 @@
+/* ============================
+   DASHBOARD MAIN CONTAINER
+============================ */
 .dashboard {
   flex: 1;
   display: flex;
@@ -5,118 +8,158 @@
   align-items: flex-start;
   padding-top: 70px;
   box-sizing: border-box;
-  height: 100vh;
+  height: 100%;
   width: 100%;
   font-family: "Poppins", sans-serif;
-  overflow: hidden;
+  overflow: auto;
 }
 
+/* ============================
+   GRID LAYOUT
+============================ */
 .grid-container {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  grid-auto-rows: auto;   /* 🔥 auto height instead of 1fr */
-  gap: 0.8rem;
+  grid-auto-rows: auto;
+  gap: 0.9rem;
   width: 100%;
-  height: calc(100% - 60px);
-  padding: 0.5rem 1rem;
+  padding: 0.8rem 1rem;
   box-sizing: border-box;
 }
 
-/* ====== CARD STYLES ====== */
+/* ============================
+   CARD BASE STYLE
+============================ */
 .card {
-  background-color: #dde5b6;
+  background: linear-gradient(145deg, #f9f7e8 0%, #f5f2df 50%, #efeccf 100%);
   border-radius: 12px;
   color: #000;
+  padding: 1rem;
+  min-height: 80px;
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;   /* 🔥 KEEP CONTENT AT TOP */
-  align-items: center;
-  text-align: center;
-  transition: all 0.3s ease;
-  padding: 0.6rem;
-
-  height: auto;     /* 🔥 FIX — removes full-height card */
-  min-height: 120px;
+  width: 100%;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+  box-sizing: border-box;
 }
 
-/* ==== GRID POSITIONS ==== */
+/* ============================
+   GRID POSITIONS
+============================ */
 .name-location {
+  font-size: small;
   grid-column: 1 / 2;
   grid-row: 1 / 2;
+  height: 130px;
 }
 
 .weather {
+  font-size: small;
   grid-column: 1 / 2;
   grid-row: 2 / 3;
+  height: 100px;
 }
 
+/* FARM DETAILS */
 .name-location-2 {
   grid-column: 2 / 3;
   grid-row: 1 / 3;
+  width: 100%;
 }
 
 .schemes {
+  font-size: small;
   grid-column: 3 / 4;
   grid-row: 1 / 3;
+  width: 100%;
 }
 
 .forecast {
   grid-column: 1 / 4;
   grid-row: 3 / 4;
+  min-height: 350px;
 }
 
-/* ===== LOCATION ROW ===== */
 .loc-row {
   display: flex;
   align-items: center;
   gap: 0.4rem;
 }
 
-/* ===== FARM INPUT ROW ===== */
-.farm-input-row {
+.farm-wrapper {
   width: 100%;
   display: flex;
-  justify-content: center;
-  gap: 0.4rem;
+  flex-direction: column;
+}
 
-  margin-bottom: 0;   /* No gap under input */
+.farm-input-row {
+  display: flex;
+  width: 100%;
+  gap: 0.5rem;
 }
 
 .farm-input {
   flex: 1;
-  padding: 0.45rem 0.6rem;
+  padding: 0.5rem;
   border-radius: 6px;
-  border: 1px solid #a8b88a;
-  font-size: 0.9rem;
+  border: 1px solid #c7c7b8;
+}
+
+.date-input {
+  max-width: 140px;
 }
 
 .farm-btn {
-  padding: 0.45rem 0.8rem;
-  border-radius: 6px;
-  border: none;
   background: #758c4f;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
   color: white;
   cursor: pointer;
-  font-weight: 500;
 }
 
 .farm-btn:hover {
   background: #607741;
 }
 
-/* ===== FARM LIST ===== */
 .farm-list {
-  width: 100%;
   list-style: none;
   padding: 0;
-  margin-top: 0.1rem;  /* almost zero gap */
+  margin-top: 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  max-height: 150px; 
+  overflow-y: auto; 
+  padding-right: 4px;
 }
 
-.farm-list li {
-  background: #eef3d8;
-  padding: 0.6rem 0.8rem;
+/* Scrollbar styling */
+.farm-list::-webkit-scrollbar {
+  width: 5px;
+}
+
+.farm-list::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.2);
+  border-radius: 6px;
+}
+
+.farm-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* FARM ITEM - FULL WIDTH */
+.farm-item {
+  width: 100%;
+  padding: 0.7rem;
   border-radius: 8px;
-  margin-bottom: 0.25rem;
-  font-size: 1rem;
-  font-weight: 500;
+  display: flex;
+  gap: 8px;
+  box-sizing: border-box;
+}
+
+.farm-countdown {
+  color: #2f6b2f;
+  font-weight: 700;
 }

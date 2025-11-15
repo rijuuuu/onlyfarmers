@@ -1,316 +1,265 @@
-/* 🌿 General Layout */
-.app-container {
-  width: 100%;
-  min-height: 100vh;
-  background-color: #f5f1dc;
-  font-family: "Poppins", sans-serif;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  color: #3a5a40;
-  padding-top: 65px;
-  box-sizing: border-box;
-}
-
-/* 🌾 Header */
-header {
-  background: linear-gradient(to right, #f0ead2, #e9e2c1);
-  width: 100%;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem 3rem;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-  position: sticky;
-  top: 0;
-  z-index: 1000;
-  border-bottom: 2px solid #e0d5b6;
-}
-
-header h1 {
-  color: #6c584c;
-  font-weight: 700;
-  font-size: 1.8rem;
+/* ============================================================
+   🌱 GLOBAL
+============================================================ */
+body {
   margin: 0;
+  font-family: 'Segoe UI', Roboto, sans-serif;
+  /* background: linear-gradient(120deg, #f9fafb, #e9f5e9); */
+  color: #222;
+  padding-top: 70px;   /* ⬅⬅ topbar space added */
 }
 
-/* 🔘 Tab Switch (Farmer / Seller Buttons) */
-.tab-switch {
-  display: flex;
-  gap: 10px;
-}
-
-.tab-switch button {
-  background-color: transparent;
-  border: 2px solid #6c584c;
-  color: #6c584c;
-  padding: 8px 20px;
-  border-radius: 25px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease-in-out;
-}
-
-.tab-switch button.active {
-  background-color: #6c584c;
-  color: #f5f1dc;
-}
-
-/* 📦 Panel Container */
 .panel {
-  background-color: #ffffff;
-  border-radius: 20px;
-  box-shadow: 0 6px 25px rgba(0, 0, 0, 0.08);
-  padding: 2rem;
-  width: 90%;
+  /* background: white;  <-- removed */
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: none; /* removed shadows to match transparent layout */
+  margin: 20px auto;
   max-width: 1000px;
-  margin: 2rem 0;
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  animation: fadeIn 0.4s ease-in-out;
 }
 
-.panel h2 {
-  text-align: center;
-  color: #3a5a40;
-  font-size: 1.6rem;
-  border-bottom: 2px solid #a3b18a;
-  padding-bottom: 0.5rem;
-}
-
-.panel h3 {
-  color: #6c584c;
-  margin-top: 1rem;
-  font-size: 1.25rem;
-}
-
-/* 🧾 Form Grid */
+/* ============================================================
+   🔍 FORM INPUTS
+============================================================ */
 .form-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 1rem;
-  margin-top: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 15px;
 }
 
 .form-grid input {
-  padding: 10px;
+  flex: 1;
+  padding: 10px 14px;
   border: 1px solid #ccc;
   border-radius: 8px;
+  font-size: 15px;
   outline: none;
-  transition: all 0.3s ease;
-  font-size: 0.95rem;
 }
 
-.form-grid input:focus {
-  border-color: #6c584c;
-  box-shadow: 0 0 6px rgba(108, 88, 76, 0.3);
-}
-
-/* ✅ Primary Button */
 .primary-btn {
-  grid-column: span 2;
-  background-color: #6c584c;
+  background: #2d8a4e;
   color: white;
   border: none;
-  padding: 10px 20px;
-  border-radius: 25px;
+  padding: 12px 20px;
+  border-radius: 8px;
   cursor: pointer;
+  font-size: 16px;
   font-weight: 600;
-  transition: all 0.3s ease-in-out;
-  box-shadow: 0 3px 10px rgba(108, 88, 76, 0.2);
 }
 
-/* 🌾 Cards Layout */
+.primary-btn:hover {
+  background: #226c3f;
+}
+
+/* ============================================================
+   🟩 SELLER RESULT GRID
+============================================================ */
 .card-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1.2rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 22px;
+  padding: 10px 0;
 }
 
 .card {
-  background: linear-gradient(135deg, #f9f6e6, #f0ead2);
-  border-radius: 15px;
-  padding: 1.2rem 1.5rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
+  height: 320px;
+  /* background: #fdfdfde0;  soft translucent */
+  border: 1px solid #dcdcdc;
+  border-radius: 14px;
 
-/* Left Section - Seller Info */
-.card-left {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 6px;
-}
-
-.card-left strong {
-  color: #3a5a40;
-  font-size: 1.05rem;
-}
-
-.card-left small {
-  color: #4f694c;
-  font-size: 0.9rem;
-}
-
-.card-left .tag {
-  background: #a3b18a;
-  color: white;
-  padding: 4px 10px;
-  border-radius: 12px;
-  font-size: 0.8rem;
-}
-
-.card-left .score {
-  margin-top: 4px;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #3a5a40;
-}
-
-/* Right Section - Connect Button */
-.card-right {
-  display: flex;
   align-items: center;
-  justify-content: flex-end;
-  min-width: 120px;
-}
+  text-align: center;
 
-/* 🌱 Buttons inside cards */
-.connect-btn,
-.accept-btn,
-.reject-btn {
-  background: #6c584c;
-  color: white;
-  border: none;
-  border-radius: 25px;
-  padding: 8px 18px;
+  padding: 18px;
   cursor: pointer;
-  font-weight: 600;
-  transition: background 0.2s ease, transform 0.2s ease;
+
+  backdrop-filter: blur(6px);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  transition: 0.25s ease-in-out;
 }
 
-.accept-btn {
-  background-color: #adc178;
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 6px 14px rgba(0,0,0,0.12);
 }
 
-.reject-btn {
-  background-color: #d9534f;
+/* LOGO BOX */
+.card-logo {
+  width: 110px;
+  height: 110px;
+  border-radius: 16px;
+  border: 1px solid #d7efdc;
+  background: #eaf9ef;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  font-size: 38px;
+  font-weight: 700;
+  color: #2d8a4e;
+
+  margin-bottom: 12px;
 }
 
-/* 🧮 Tables */
-.table-container {
-  overflow-x: auto;
+/* TEXT STYLING */
+.card-title {
+  font-size: 17px;
+  font-weight: 800;
+  color: #155c34;
+  line-height: 1.3;
+  margin-bottom: 4px;
 }
 
+.card-district {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 10px;
+}
+
+.card-commodities {
+  font-size: 13px;
+  color: #333;
+  height: 40px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 14px;
+}
+
+/* CONNECT BUTTON */
+.connect-btn {
+  width: 100%;
+  padding: 12px;
+  background: #2d8a4e;
+  border-radius: 8px;
+  border: none;
+  font-size: 15px;
+  font-weight: bold;
+  color: white;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.connect-btn:hover {
+  background: #1f6a39;
+}
+
+/* ============================================================
+   📊 REQUEST TABLE
+============================================================ */
 .table-container table {
   width: 100%;
   border-collapse: collapse;
-  margin-top: 10px;
-  font-size: 0.95rem;
-}
-
-.table-container th,
-.table-container td {
-  border-bottom: 1px solid #ddd;
-  padding: 10px;
-  text-align: left;
+  border-radius: 10px;
+  overflow: hidden;
+  background: transparent; /* removed white */
+  border: none;
 }
 
 .table-container th {
-  background-color: #f0ead2;
-  color: #3a5a40;
-  font-weight: 600;
+  padding: 10px;
+  background: transparent;
+  font-weight: bold;
 }
 
-.table-container td.accepted {
-  color: #4caf50;
-  font-weight: 600;
+.table-container td {
+  border: 1px solid #ccc;
+  padding: 10px;
+  backdrop-filter: blur(5px);
 }
 
-.table-container td.rejected {
-  color: #f44336;
-  font-weight: 600;
+/* Status colors */
+td.accepted { color: #2d8a4e; font-weight: bold; }
+td.rejected { color: #dc3545; font-weight: bold; }
+td.pending { color: #f39c12; font-weight: bold; }
+
+/* ============================================================
+   💬 BUYER–SELLER CHAT
+============================================================ */
+
+.buyer-seller-chatbox {
+  display: flex;
+  flex-direction: column;
+  height: 400px;
+  border: 1px solid #ccc;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #ffffffd8;
+  margin-top: 15px;
+  backdrop-filter: blur(6px);
 }
 
-.table-container td.pending {
-  color: #ff9800;
-  font-weight: 600;
-}
-
-/* 🔔 Notification List */
-.notif-list {
-  list-style: none;
-  padding-left: 0;
-  margin: 0.5rem 0;
-}
-
-.notif-list li {
-  background-color: #ffffff;
-  border-left: 5px solid #6c584c;
-  padding: 8px 12px;
-  border-radius: 8px;
-  margin-bottom: 8px;
-  font-size: 0.9rem;
-  transition: background 0.3s;
-}
-
-/* 🌾 Footer */
-footer {
-  background-color: #f0ead2;
-  color: #6c584c;
-  padding: 1rem;
-  width: 100%;
+.buyer-seller-chat-header {
+  background: #46b96b;
+  color: white;
+  padding: 10px;
   text-align: center;
-  font-weight: 600;
-  font-size: 0.9rem;
-  border-top: 2px solid #e2d7b6;
+  font-weight: bold;
 }
 
-/* ✨ Animation */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(15px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.buyer-seller-chat-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  background: #f5f5f580;
+  backdrop-filter: blur(3px);
 }
 
-/* 📱 Responsive Design */
-@media (max-width: 800px) {
-  header {
-    flex-direction: column;
-    text-align: center;
-    gap: 0.5rem;
-  }
+/* message blocks */
+.msg {
+  margin-bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  max-width: 80%;
+}
 
-  .panel {
-    width: 95%;
-    padding: 1.2rem;
-  }
+.msg.sent {
+  margin-left: auto;
+  align-items: flex-end;
+}
 
-  .form-grid {
-    grid-template-columns: 1fr;
-  }
+.msg.recv {
+  margin-right: auto;
+  align-items: flex-start;
+}
 
-  .primary-btn {
-    grid-column: 1;
-  }
+.bubble {
+  padding: 10px 14px;
+  border-radius: 20px;
+  background: #e0f8e9;
+  color: #222;
+  font-size: 14px;
+}
 
-  .card {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.7rem;
-  }
+.msg.sent .bubble {
+  background: #46b96b;
+  color: #fff;
+}
 
-  .card-right {
-    align-self: flex-end;
-  }
+.buyer-seller-chat-input {
+  display: flex;
+  border-top: 1px solid #ddd;
+  background: #f8f8f8aa;
+  backdrop-filter: blur(4px);
+}
+
+.buyer-seller-chat-input input {
+  flex: 1;
+  border: none;
+  padding: 12px;
+  font-size: 14px;
+  outline: none;
+  background: transparent;
+}
+
+.buyer-seller-chat-input button {
+  background: #46b96b;
+  border: none;
+  padding: 10px 20px;
+  cursor: pointer;
+  font-weight: bold;
+  color: white;
 }

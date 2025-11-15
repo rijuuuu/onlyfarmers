@@ -1,27 +1,24 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import "../style/Dashboard.css";
 import { FaLocationDot } from "react-icons/fa6";
 
 export default function Dashboard() {
   const userID = localStorage.getItem("uniqueID");
 
-  const [district, setDistrict] = useState("");
-  const [state, setState] = useState("");
-  const [error, setError] = useState("");
+  const [district, setDistrict] = React.useState("");
+  const [state, setState] = React.useState("");
+  const [error, setError] = React.useState("");
 
-  const [farmInput, setFarmInput] = useState("");
-  const [farmDate, setFarmDate] = useState("");
-  const [farmList, setFarmList] = useState([]);
+  const [farmInput, setFarmInput] = React.useState("");
+  const [farmDate, setFarmDate] = React.useState("");
+  const [farmList, setFarmList] = React.useState([]);
 
-  // Re-run countdown every second
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setFarmList((prev) => [...prev]);
-    }, 1000);
+  React.useEffect(() => {
+    const timer = setInterval(() => setFarmList((p) => [...p]), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  useEffect(() => {
+  React.useEffect(() => {
     fetchCrops();
     getLocation();
   }, []);
@@ -29,7 +26,7 @@ export default function Dashboard() {
   const fetchCrops = async () => {
     try {
       const res = await fetch(
-        `http://127.0.0.1:5000/api/crops/get?userID=${userID}`
+        `http://192.168.0.104:5000/api/crops/get?userID=${userID}`
       );
       const data = await res.json();
       if (res.ok) setFarmList(data);
@@ -41,14 +38,10 @@ export default function Dashboard() {
   const addFarmDetail = async () => {
     if (!farmInput.trim() || !farmDate.trim()) return;
 
-    const payload = {
-      userID: userID,
-      text: farmInput,
-      date: farmDate,
-    };
+    const payload = { userID, text: farmInput, date: farmDate };
 
     try {
-      const res = await fetch("http://127.0.0.1:5000/api/crops/add", {
+      const res = await fetch("http://192.168.0.104:5000/api/crops/add", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -73,7 +66,6 @@ export default function Dashboard() {
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         const { latitude, longitude } = pos.coords;
-
         try {
           const res = await fetch(
             `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`
@@ -87,9 +79,8 @@ export default function Dashboard() {
               data.address.state_district ||
               data.address.city
           );
-
           setState(data.address.state);
-        } catch (err) {
+        } catch {
           setError("Cannot fetch location data");
         }
       },
@@ -97,84 +88,94 @@ export default function Dashboard() {
     );
   };
 
-  // 🎯 COUNTDOWN FUNCTION
   const getCountdown = (targetDate) => {
     const end = new Date(targetDate).getTime();
     const now = Date.now();
     const diff = end - now;
 
-    if (diff <= 0) return "⏳ Completed";
+    if (diff <= 0) return "Completed";
 
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
-    const minutes = Math.floor((diff / (1000 * 60)) % 60);
-    const seconds = Math.floor((diff / 1000) % 60);
+    const d = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const h = Math.floor((diff / (1000 * 60 * 60)) % 24);
+    const m = Math.floor((diff / (1000 * 60)) % 60);
+    const s = Math.floor((diff / 1000) % 60);
 
-    return `${days}d ${hours}h ${minutes}m ${seconds}s`;
+    return `${d}d ${h}h ${m}m ${s}s`;
   };
+
+  const sortedFarmList = [...farmList].sort(
+    (a, b) => new Date(a.date) - new Date(b.date)
+  );
 
   return (
     <div className="dashboard">
       <div className="grid-container">
+
+        {/* USER CARD */}
         <div className="card name-location">
           <h1>Hello, {userID}</h1>
           <div className="loc-row">
-            <FaLocationDot className="loc-icon" />
-            <p>
-              {district && state
-                ? `${district}, ${state}`
-                : "Fetching location..."}
-            </p>
+            <FaLocationDot />
+            <p>{district && state ? `${district}, ${state}` : "Fetching..."}</p>
           </div>
-          {error && <p className="error">{error}</p>}
+          {error && <p style={{ color: "red" }}>{error}</p>}
         </div>
 
-        {/* Farm Details */}
-        <div className="card name-location-2">
-          <div className="farm-input-row">
-            <input
-              type="text"
-              className="farm-input"
-              value={farmInput}
-              onChange={(e) => setFarmInput(e.target.value)}
-              placeholder="Enter farm detail"
-            />
-
-            <input
-              type="date"
-              className="farm-input"
-              value={farmDate}
-              onChange={(e) => setFarmDate(e.target.value)}
-            />
-
-            <button className="farm-btn" onClick={addFarmDetail}>
-              Add
-            </button>
-          </div>
-
-          <ul className="farm-list">
-            {farmList.map((item, index) => (
-              <li key={index}>
-                <b>{item.text}</b>  - {getCountdown(item.date)}
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        <div className="card schemes">
-          <h3>Gov Schemes</h3>
-          <p>Latest agriculture schemes will appear here.</p>
-        </div>
-
+        {/* WEATHER */}
         <div className="card weather">
           <h3>Weather</h3>
           <p>Coming soon...</p>
         </div>
 
+        {/* FARM DETAILS */}
+        <div className="card name-location-2">
+          <div className="farm-wrapper">
+            <div className="farm-input-row">
+              <input
+                type="text"
+                className="farm-input"
+                value={farmInput}
+                onChange={(e) => setFarmInput(e.target.value)}
+                placeholder="Enter farm detail"
+              />
+
+              <input
+                type="date"
+                className="farm-input date-input"
+                value={farmDate}
+                onChange={(e) => setFarmDate(e.target.value)}
+              />
+
+              <button className="farm-btn" onClick={addFarmDetail}>
+                Add
+              </button>
+            </div>
+
+            <ul className="farm-list">
+              {sortedFarmList.map((item, i) => (
+                <li key={i} className="farm-item">
+                  <span className="farm-countdown">
+                    {getCountdown(item.date)}
+                  </span>
+                  <span className="farm-text"> — {item.text}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        {/* GOV SCHEMES */}
+        <div className="card schemes">
+          <h3>Gov Schemes</h3>
+          <p>Latest agriculture schemes will appear here.</p>
+        </div>
+
+        {/* FORECAST */}
         <div className="card forecast">
           <h3>Forecast</h3>
           <p>Coming soon...</p>
         </div>
+
       </div>
     </div>
   );

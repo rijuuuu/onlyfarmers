@@ -1,74 +1,17 @@
 // src/api.js
 import axios from "axios";
 
-// ✅ Base URL updated to match your Flask backend
-const API = axios.create({
-  baseURL: "http://127.0.0.1:5000//api",
-});
+const API = "http://192.168.0.104:5000";
 
-// ------------------------------
-// 🔍 RECOMMENDATION
-// ------------------------------
 export const recommend = async (payload) => {
-  const res = await API.post("/recommend", payload);
-  try {
-    // Flask returns a JSON string (from pandas.to_json)
-    return typeof res.data === "string" ? JSON.parse(res.data) : res.data;
-  } catch (err) {
-    console.error("Error parsing recommend response:", err);
-    return [];
-  }
-};
-
-// ------------------------------
-// 📨 CREATE REQUEST
-// ------------------------------
-export const createRequest = async (payload) => {
-  const res = await API.post("/request", payload);
+  const res = await axios.post(`${API}/api/recommend`, payload);
   return res.data;
 };
 
-// ------------------------------
-// 📋 LIST REQUESTS
-// ------------------------------
-export const listRequests = async (params) => {
-  const res = await API.get("/requests", { params });
-  return res.data;
-};
-
-// ------------------------------
-// 🔔 LIST NOTIFICATIONS
-// ------------------------------
-export const listNotifications = async (params) => {
-  const res = await API.get("/notifications", { params });
-  return res.data;
-};
-
-// ------------------------------
-// ✅ ACCEPT REQUEST
-// ------------------------------
-export const acceptRequest = async (id) => {
-  const res = await API.post(`/accept/${id}`);
-  return res.data;
-};
-
-// ------------------------------
-// ❌ REJECT REQUEST
-// ------------------------------
-export const rejectRequest = async (id) => {
-  const res = await API.post(`/reject/${id}`);
-  return res.data;
-};
-
-// ------------------------------
-// 💬 CHAT SYSTEM
-// ------------------------------
-export const sendMessage = async (payload) => {
-  const res = await API.post("/chat/send", payload);
-  return res.data;
-};
-
-export const getChatHistory = async (params) => {
-  const res = await API.get("/chat/history", { params });
-  return res.data;
-};
+export const createRequest = (payload) => axios.post(`${API}/api/request`, payload).then(r => r.data);
+export const listRequests = (params) => axios.get(`${API}/api/requests`, { params }).then(r => r.data);
+export const listNotifications = (params) => axios.get(`${API}/api/notifications`, { params }).then(r => r.data);
+export const acceptRequest = (id) => axios.post(`${API}/api/accept/${id}`).then(r => r.data);
+export const rejectRequest = (id) => axios.post(`${API}/api/reject/${id}`).then(r => r.data);
+export const sendMessage = (payload) => axios.post(`${API}/api/chat/send`, payload).then(r => r.data);
+export const getChatHistory = (room) => axios.get(`${API}/api/chat/history`, { params: { room } }).then(r => r.data);

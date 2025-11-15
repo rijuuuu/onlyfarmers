@@ -7,7 +7,22 @@ export default function SignUp() {
     uniqueID: "",
     email: "",
     password: "",
+    role: "",
+    state: "",   // NEW FIELD
   });
+
+  const indianStates = [
+    "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh",
+    "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand",
+    "Karnataka", "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur",
+    "Meghalaya", "Mizoram", "Nagaland", "Odisha", "Punjab",
+    "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura",
+    "Uttar Pradesh", "Uttarakhand", "West Bengal",
+    "Andaman & Nicobar Islands", "Chandigarh", "Dadra & Nagar Haveli",
+    "Daman & Diu", "Delhi", "Jammu & Kashmir", "Ladakh", "Lakshadweep",
+    "Puducherry"
+  ];
+
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -22,12 +37,13 @@ export default function SignUp() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (loading) return;
+
     setLoading(true);
 
-    const { uniqueID, email, password } = formData;
+    const { uniqueID, email, password, role, state } = formData;
 
-    if (!uniqueID || !email || !password) {
-      setError("Please fill in all fields");
+    if (!uniqueID || !email || !password || !role || !state) {
+      setError("Please fill all fields, including user type and state.");
       setLoading(false);
       return;
     }
@@ -35,29 +51,22 @@ export default function SignUp() {
     setError("");
 
     try {
-      const response = await fetch("http://127.0.0.1:5000/signUp", {
+      const response = await fetch("http://192.168.0.104:5000/signUp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
       });
 
-      let result;
-      try {
-        result = await response.json();
-      } catch {
-        throw new Error("Invalid JSON response from server");
-      }
-
-      console.log("Server response:", result);
+      let result = await response.json();
 
       if (response.ok) {
         localStorage.setItem("uniqueID", uniqueID);
+        localStorage.setItem("role", role);
         navigate("/Login");
       } else {
         setError(result.error || "Signup failed");
       }
     } catch (err) {
-      console.error(err);
       setError("Server error. Please try again.");
     }
 
@@ -67,12 +76,13 @@ export default function SignUp() {
   return (
     <div className="loginPage">
       <h1 className="login-title">Sign Up</h1>
-      <form className="login-form" onSubmit={handleSubmit}>
+
+      <form onSubmit={handleSubmit}>
+
         <div>
           <input
             type="text"
             name="uniqueID"
-            className="form-input"
             value={formData.uniqueID}
             onChange={handleChange}
             placeholder="Unique ID"
@@ -83,7 +93,6 @@ export default function SignUp() {
           <input
             type="email"
             name="email"
-            className="form-input"
             value={formData.email}
             onChange={handleChange}
             placeholder="Email"
@@ -94,16 +103,61 @@ export default function SignUp() {
           <input
             type="password"
             name="password"
-            className="form-input"
             value={formData.password}
             onChange={handleChange}
             placeholder="Password"
           />
         </div>
 
+        {/* 🔥 STATE DROPDOWN */}
+        <div>
+          <select
+            name="state"
+            value={formData.state}
+            onChange={handleChange}
+            className="dropdown-input"
+          >
+            <option value="">Select State</option>
+            {indianStates.map((st, i) => (
+              <option key={i} value={st}>
+                {st}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* 🔥 Role selection */}
+        <div className="role-box">
+          <p className="role-label">Select User Type:</p>
+
+          <div className="role-options">
+            <label className="role-option">
+              <input
+                type="radio"
+                name="role"
+                value="farmer"
+                checked={formData.role === "farmer"}
+                onChange={handleChange}
+              />
+              <span>Farmer</span>
+            </label>
+
+            <label className="role-option">
+              <input
+                type="radio"
+                name="role"
+                value="seller"
+                checked={formData.role === "seller"}
+                onChange={handleChange}
+              />
+              <span>Seller</span>
+            </label>
+          </div>
+        </div>
+
         {error && <p className="error-message">{error}</p>}
 
-        <button type="submit" className="login-button" disabled={loading}>
+        <button type="submit" disabled={loading} className="login-button">
           {loading ? "Signing Up..." : "Sign Up"}
         </button>
       </form>

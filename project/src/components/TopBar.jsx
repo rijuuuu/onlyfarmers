@@ -2,7 +2,13 @@ import "../style/TopBar.css";
 import icon from "../icon/logo.png";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
-import { FaBell, FaChevronDown, FaChevronUp, FaBars, FaTimes } from "react-icons/fa";
+import {
+  FaBell,
+  FaChevronDown,
+  FaChevronUp,
+  FaBars,
+  FaTimes,
+} from "react-icons/fa";
 
 function TopBar() {
   const navigate = useNavigate();
@@ -16,10 +22,31 @@ function TopBar() {
   const goToLogin = () => navigate("/login");
   const handleLogout = () => {
     localStorage.removeItem("uniqueID");
+    localStorage.removeItem("role");
     window.location.reload();
   };
   const goToHome = () => navigate("/home");
-  const goToMarket = () => navigate("/market");
+  const goToMarket = () => {
+  const userID = localStorage.getItem("uniqueID");
+  const role = localStorage.getItem("role");
+
+  // Not logged in
+  if (!userID) {
+    navigate("/login");
+    return;
+  }
+
+  // If role is missing → assume farmer (default)
+  if (!role) {
+    navigate("/buyer");
+    return;
+  }
+
+  if (role === "farmer") navigate("/buyer");
+  else if (role === "seller") navigate("/seller");
+  else navigate("/buyer"); // fallback
+};
+
 
   const handleNavigation = (path) => {
     navigate(`/${path}`);
@@ -64,7 +91,9 @@ function TopBar() {
           if (data.alerts && data.alerts.length > 0) {
             setWeatherAlerts(data.alerts);
           } else {
-            setWeatherAlerts([{ event: "No active weather alerts at your location." }]);
+            setWeatherAlerts([
+              { event: "No active weather alerts at your location." },
+            ]);
           }
         } catch (error) {
           setWeatherAlerts([{ event: "Failed to fetch weather alerts." }]);
@@ -90,7 +119,11 @@ function TopBar() {
           <button className="menu-button" onClick={toggleMenu}>
             More Options{" "}
             <span className="menu-icon">
-              {menuOpen ? <FaChevronUp size={14} /> : <FaChevronDown size={14} />}
+              {menuOpen ? (
+                <FaChevronUp size={14} />
+              ) : (
+                <FaChevronDown size={14} />
+              )}
             </span>
           </button>
 
@@ -102,11 +135,15 @@ function TopBar() {
               <p onClick={() => handleNavigation("disease_detection")}>
                 Disease Detection
               </p>
-              <p onClick={() => handleNavigation("fertilizer_pesticide_advice")}>
+              <p
+                onClick={() => handleNavigation("fertilizer_pesticide_advice")}
+              >
                 Fertilizer & Pesticide Advice
               </p>
               <p onClick={() => handleNavigation("soil_health")}>Soil Health</p>
-              <p onClick={() => handleNavigation("weather_query")}>Weather Query</p>
+              <p onClick={() => handleNavigation("weather_query")}>
+                Weather Query
+              </p>
               <p onClick={() => handleNavigation("market_price_info")}>
                 Market Price Info
               </p>
@@ -131,7 +168,9 @@ function TopBar() {
               {weatherAlerts.map((alert, index) => (
                 <div key={index} className="alert-item">
                   <p className="alert-event">{alert.event}</p>
-                  {alert.description && <p className="alert-desc">{alert.description}</p>}
+                  {alert.description && (
+                    <p className="alert-desc">{alert.description}</p>
+                  )}
                 </div>
               ))}
             </div>
@@ -156,13 +195,19 @@ function TopBar() {
             <p onClick={() => handleNavigation("crop_recommendation")}>
               Crop Recommendation
             </p>
-            <p onClick={() => handleNavigation("disease_detection")}>Disease Detection</p>
+            <p onClick={() => handleNavigation("disease_detection")}>
+              Disease Detection
+            </p>
             <p onClick={() => handleNavigation("fertilizer_pesticide_advice")}>
               Fertilizer & Pesticide Advice
             </p>
             <p onClick={() => handleNavigation("soil_health")}>Soil Health</p>
-            <p onClick={() => handleNavigation("weather_query")}>Weather Query</p>
-            <p onClick={() => handleNavigation("market_price_info")}>Market Price Info</p>
+            <p onClick={() => handleNavigation("weather_query")}>
+              Weather Query
+            </p>
+            <p onClick={() => handleNavigation("market_price_info")}>
+              Market Price Info
+            </p>
           </div>
         )}
       </div>
