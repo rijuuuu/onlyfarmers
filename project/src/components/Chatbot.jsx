@@ -1,36 +1,46 @@
 import React, { useEffect, useRef, useState } from "react";
-import { useLocation } from "react-router-dom"; // ADDED
+import { useLocation } from "react-router-dom";
 import "../style/Chatbot.css";
 
 export default function ChatBox() {
   const [isOpen, setIsOpen] = useState(true);
+  const [userClosed, setUserClosed] = useState(false);  // FIX
   const [message, setMessage] = useState("");
   const [chatHistory, setChatHistory] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const msgsRef = useRef(null);
+  const location = useLocation();
 
-  // Get current location object
-  const location = useLocation(); // ADDED
+  const detectMobile = () => {
+    return (
+      window.innerWidth <= 1024 ||
+      "ontouchstart" in window ||
+      navigator.maxTouchPoints > 0 ||
+      /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+    );
+  };
 
-  // Default collapsed on mobile
-  useEffect(() => {
-    if (window.innerWidth <= 900) setIsOpen(false);
-  }, []);
+  const adjustChatState = () => {
+    if (userClosed) return; // ⬅ prevents forced reopening
 
-  // FIXED: Collapse on navigation, but open specifically on the Home page.
-  useEffect(() => {
-    // Check if the current path is the homepage (either "/" or "/home")
-    if (location.pathname === "/" || location.pathname === "/home") {
-      // Open the chatbot on the homepage
-      setIsOpen(true);
-    } else {
-      // Close the chatbot on all other pages
+    if (detectMobile()) {
       setIsOpen(false);
+    } else {
+      setIsOpen(true);
     }
-  }, [location.pathname]); // Triggered when the route path changes
+  };
 
-  // Auto-scroll to bottom
+  useEffect(() => {
+    adjustChatState();
+    window.addEventListener("resize", adjustChatState);
+    return () => window.removeEventListener("resize", adjustChatState);
+  }, [userClosed]);
+
+  useEffect(() => {
+    adjustChatState();
+  }, [location.pathname]);
+
   useEffect(() => {
     if (msgsRef.current) {
       msgsRef.current.scrollTop = msgsRef.current.scrollHeight;
@@ -41,17 +51,18 @@ export default function ChatBox() {
     e.preventDefault();
     if (!message.trim()) return;
 
-    setChatHistory((prev) => [...prev, { sender: "user", text: message }]);
-    const userMessage = message;
+    const text = message;
+
+    setChatHistory((prev) => [...prev, { sender: "user", text }]);
     setMessage("");
-    setError("");
     setLoading(true);
+    setError("");
 
     try {
-      const res = await fetch("http://192.168.0.104:5000/chatbot", {
+      const res = await fetch("http://192.168.1.5:5000/chatbot", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: userMessage }),
+        body: JSON.stringify({ message: text }),
       });
 
       const data = await res.json();
@@ -59,56 +70,51 @@ export default function ChatBox() {
       if (res.ok) {
         setChatHistory((prev) => [...prev, { sender: "bot", text: data.reply }]);
       } else {
-        setError(data.error || "Server Unreachable");
+        setError(data.error || "Server error");
       }
     } catch {
       setError("Server Unreachable");
-    } finally {
-      setLoading(false);
     }
+
+    setLoading(false);
+  };
+
+  const closeChat = () => {
+    setIsOpen(false);
+    setUserClosed(true);        // FIX — prevents reopening
+  };
+
+  const openChat = () => {
+    setIsOpen(true);
+    setUserClosed(false);       // FIX — allows auto behavior again
   };
 
   return (
     <>
-      {/* Floating chat icon */}
       {!isOpen && (
-        <button
-          className="chatbot-icon"
-          onClick={() => setIsOpen(true)}
-          aria-label="open"
-        >
+        <button className="chatbot-icon" onClick={openChat}>
           💬
         </button>
       )}
 
       {isOpen && (
         <div className="chatbot">
-          {/* Header */}
           <div className="chat-header">
             <div className="chat-title">KrishiMitra Chatbot</div>
-            <button className="close-btn" onClick={() => setIsOpen(false)}>
-              ✕
-            </button>
+            <button className="close-btn" onClick={closeChat}>✕</button>
           </div>
 
-          {/* Messages */}
           <div className="msgs" ref={msgsRef}>
-            {chatHistory.map((msg, index) => (
-              <div
-                key={index}
-                className={`chat-bubble ${
-                  msg.sender === "user" ? "user-bubble" : "bot-bubble"
-                }`}
-              >
-                <div className="bubble-text">{msg.text}</div>
+            {chatHistory.map((m, i) => (
+              <div key={i} className={`chat-bubble ${m.sender}-bubble`}>
+                {m.text}
               </div>
             ))}
 
-            {/* Centered red error */}
             {error && <p className="error-msg">{error}</p>}
           </div>
 
-          {/* Input box */}
+          {/* Restore your FULL styled send button */}
           <div className="msg-box">
             <form onSubmit={handleSend}>
               <input
@@ -117,8 +123,8 @@ export default function ChatBox() {
                 placeholder="Type your message..."
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                disabled={loading}
               />
+
               <button type="submit" disabled={loading}>
                 {loading ? "..." : "Send"}
               </button>

@@ -12,7 +12,7 @@
   min-height: calc(100vh - 120px);
   overflow: hidden;
   z-index: 999;
-  transition: transform 0.28s ease, opacity 0.22s ease;
+  transition: transform 0.25s ease, opacity 0.22s ease;
 }
 
 /* HEADER */
@@ -30,7 +30,7 @@
   font-size: 1rem;
 }
 
-/* CLOSE BUTTON */
+/* CLOSE X BUTTON */
 .close-btn {
   background: transparent;
   border: none;
@@ -40,7 +40,7 @@
   padding: 4px 6px;
 }
 
-/* MESSAGE AREA */
+/* MESSAGE LIST */
 .msgs {
   flex: 1;
   padding: 18px;
@@ -50,7 +50,7 @@
   gap: 12px;
 }
 
-/* ERROR MESSAGE */
+/* ERROR */
 .error-msg {
   align-self: center;
   color: #d9534f;
@@ -61,7 +61,7 @@
   border-radius: 10px;
 }
 
-/* CHAT BUBBLES */
+/* BUBBLES */
 .chat-bubble {
   max-width: 78%;
   padding: 12px 14px;
@@ -83,7 +83,7 @@
   align-self: flex-end;
 }
 
-/* INPUT SECTION */
+/* INPUT AREA */
 .msg-box {
   padding: 12px 14px;
   background: #fff;
@@ -102,17 +102,21 @@
   border-radius: 28px;
   border: 1px solid #ccc;
   font-size: 1rem;
+  background: #fafafa;
 }
 
-/* SEND BUTTON */
+/* RESTORED BUTTON STYLING */
 .msg-box button {
   background: #6c584c;
   color: #fff;
   border: none;
-  padding: 10px 16px;
+  padding: 10px 20px;
   border-radius: 28px;
   cursor: pointer;
   font-weight: 600;
+  font-size: 0.95rem;
+  min-width: 85px;
+  transition: background 0.2s ease;
 }
 
 .msg-box button:hover {
@@ -124,7 +128,7 @@
   cursor: not-allowed;
 }
 
-/* FLOATING ICON WHEN COLLAPSED */
+/* FLOATING ICON */
 .chatbot-icon {
   position: fixed;
   bottom: 2rem;
@@ -139,11 +143,10 @@
   justify-content: center;
   align-items: center;
   cursor: pointer;
-  z-index: 9999;  /* SUPER HIGH → always visible */
+  z-index: 9999;
   box-shadow: 0 0 10px rgba(0,0,0,0.2);
   transition: transform 0.2s ease-in-out;
 }
-    
 
 /* SCROLLBAR */
 .msgs::-webkit-scrollbar {
@@ -154,16 +157,11 @@
   border-radius: 8px;
 }
 
-/* RESPONSIVE */
+/* MOBILE / TABLET */
 @media (max-width: 900px) {
   .chatbot {
     width: 92%;
     right: 4%;
-    bottom: 60px;
-    height: 82vh;
-  }
-  .chatbot-icon {
-    right: 3.5%;
-    bottom: 1.8rem;
+    bottom: 40px;
   }
 }

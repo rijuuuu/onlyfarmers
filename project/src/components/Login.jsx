@@ -7,11 +7,11 @@ export default function Login() {
     uniqueID: "",
     password: "",
   });
+
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  // Handle input change
   const handleChange = (e) => {
     setFormData({
       ...formData,
@@ -19,24 +19,21 @@ export default function Login() {
     });
   };
 
-  // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError(""); // clear previous errors
+    setError("");
 
     const { uniqueID, password } = formData;
 
-    // Basic validation
     if (!uniqueID || !password) {
       setError("Please fill in all fields");
       return;
     }
-    console.log(JSON.stringify({ uniqueID, password }));
 
     try {
       setLoading(true);
 
-      const response = await fetch("http://192.168.0.104:5000/login", {
+      const response = await fetch("http://192.168.1.5:5000/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ uniqueID, password }),
@@ -45,27 +42,15 @@ export default function Login() {
       const result = await response.json();
 
       if (response.ok) {
-        // FIX: Store user role and navigate to the specific dashboard
-        
-        const userRole = result.role; 
+        localStorage.setItem("uniqueID", uniqueID);
+        localStorage.setItem("userRole", result.role || "");
 
-        if (userRole) {
-            localStorage.setItem("uniqueID", uniqueID);
-            localStorage.setItem("userRole", userRole);
-
-            // Navigate to the correct dashboard based on role
-            const targetPath = userRole.toLowerCase() === 'seller' ? '/seller' : '/buyer';
-            navigate(targetPath);
-        } else {
-            console.error("❌ Login error: User role is missing from server response.");
-            localStorage.setItem("uniqueID", uniqueID);
-            navigate("/Home");
-        }
+        navigate("/home", { replace: true });  // 🔥 FIX — ABSOLUTE PATH ALWAYS
       } else {
         setError(result.error || "Invalid login credentials");
       }
     } catch (err) {
-      console.error("❌ Login error:", err);
+      console.error("Login error:", err);
       setError("Server error. Please try again later.");
     } finally {
       setLoading(false);

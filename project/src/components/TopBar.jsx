@@ -38,13 +38,13 @@ function TopBar() {
 
   // If role is missing → assume farmer (default)
   if (!role) {
-    navigate("/buyer");
+    navigate("/farmer");
     return;
   }
 
-  if (role === "farmer") navigate("/buyer");
+  if (role === "farmer") navigate("/farmer");
   else if (role === "seller") navigate("/seller");
-  else navigate("/buyer"); // fallback
+  else navigate("/farmer"); // fallback
 };
 
 

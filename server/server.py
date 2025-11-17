@@ -1,17 +1,18 @@
 import os
 import uuid
-import time
+import re
 from datetime import datetime
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from flask_pymongo import PyMongo
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
-import pandas as pd
-import numpy as np
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
 from web3 import Web3
+
+# New import for BM25
+from rank_bm25 import BM25Okapi
+import warnings
+warnings.filterwarnings("ignore")
 
 try:
     from src.vectorstore import FaissVectorStore
@@ -19,9 +20,6 @@ try:
 except Exception:
     FaissVectorStore = None
     RAGSearch = None
-
-import warnings
-warnings.filterwarnings("ignore")
 
 load_dotenv()
 
@@ -53,13 +51,7 @@ ABI = [
     }
 ]
 
-# Helper function 1 (Original, used for general text cleaning)
-def normalize_text(t: str) -> str:
-    return str(t or "").lower().replace(" ", "").replace("-", "").replace("_", "")
-
-# FIX: Helper function 2 (New, for strict alphanumeric ID cleaning/comparison)
 def clean_alphanumeric(t: str) -> str:
-    """Removes all non-alphanumeric characters and converts to lowercase for robust ID matching."""
     t_str = str(t or "").lower()
     cleaned = ""
     for char in t_str:
@@ -72,10 +64,7 @@ def get_web3():
         raise RuntimeError("INFURA_URL is not set in environment.")
     w3 = Web3(Web3.HTTPProvider(INFURA_URL))
     try:
-        if callable(getattr(w3, "is_connected", None)):
-            ok = w3.is_connected()
-        else:
-            ok = w3.isConnected()
+        ok = w3.is_connected()
     except Exception:
         ok = False
     if not ok:
@@ -111,45 +100,7 @@ def create_blockchain_deal(crop, region, price, farmer_address=None, seller_addr
     except Exception:
         return None
 
-def load_sellers(path="data/FPC_sample_alipurduar.csv"):
-    base_cols = ["FPC_Name", "District", "Commodities", "Email", "Address", "Contact_Phone"]
-    if not os.path.exists(path):
-        return pd.DataFrame(columns=base_cols)
-    try:
-        df = pd.read_csv(path, encoding="utf-8")
-    except UnicodeDecodeError:
-        df = pd.read_csv(path, encoding="cp1252")
-    except Exception:
-        return pd.DataFrame(columns=base_cols)
-    df.columns = [c.strip().replace(" ", "_") for c in df.columns]
-    for c in base_cols:
-        if c not in df:
-            df[c] = ""
-        df[c] = df[c].fillna("").astype(str)
-    # This creates the alphanumeric seller_id
-    df["seller_id"] = df["FPC_Name"].astype(str).str.replace(r"[^a-zA-Z0-9]", "", regex=True)
-    return df
-
-SELLERS = load_sellers()
-
-def train_vectorizer(df):
-    if df is None or df.empty:
-        return TfidfVectorizer(stop_words="english"), np.zeros((0, 0))
-    df = df.copy()
-    df["combined_text"] = (
-        df["FPC_Name"].fillna("") + " " +
-        df["District"].fillna("") + " " +
-        df["Commodities"].fillna("") + " " +
-        df["Address"].fillna("")
-    )
-    vec = TfidfVectorizer(stop_words="english")
-    try:
-        mat = vec.fit_transform(df["combined_text"].astype(str))
-    except Exception:
-        mat = np.zeros((0, 0))
-    return vec, mat
-
-VEC, MAT = train_vectorizer(SELLERS)
+CHATS = []
 
 rag = None
 if FaissVectorStore is not None and RAGSearch is not None:
@@ -160,9 +111,80 @@ if FaissVectorStore is not None and RAGSearch is not None:
     except Exception:
         rag = None
 
-REQUESTS = []
-NOTIFS = []
-CHATS = []
+# -------------------------
+# Recommendation helpers
+# -------------------------
+
+def preprocess_text_for_bm25(text):
+    t = str(text or "").lower()
+    t = re.sub(r'[^a-z0-9\s]', ' ', t)
+    tokens = [tok for tok in t.split() if tok]
+    return tokens
+
+def build_seller_docs_from_db():
+    sellers_cursor = mongo.db.users.find({"role": {"$regex": "^seller$", "$options": "i"}})
+    sellers = []
+    corpus = []
+    for s in sellers_cursor:
+        seller = {}
+        seller['_id'] = s.get("_id")
+        seller['fpcName'] = s.get("fpcName") or s.get("fpc_name") or s.get("_id")
+        seller['district'] = s.get("district", "")
+        comms = s.get("commodities", [])
+        if isinstance(comms, list):
+            commodities_str = ", ".join([str(x) for x in comms if x])
+        else:
+            commodities_str = str(comms)
+        seller['commodities'] = commodities_str
+        seller['address'] = s.get("address", "") or s.get("Address", "")
+        seller['contact_phone'] = s.get("contact_phone", "") or s.get("Contact_Phone", "")
+        try:
+            seller['rating'] = float(s.get("rating", s.get("Rating", 5))) if s.get("rating", None) is not None else 5.0
+        except Exception:
+            seller['rating'] = 5.0
+        try:
+            seller['years_of_experience'] = float(s.get("years_of_experience", s.get("Years_of_Experience", 5))) if s.get("years_of_experience", None) is not None else 5.0
+        except Exception:
+            seller['years_of_experience'] = 5.0
+
+        sellers.append(seller)
+
+        doc_text = f"{seller['fpcName']} {seller['district']} {seller['commodities']} {seller['address']}"
+        corpus.append(preprocess_text_for_bm25(doc_text))
+
+    bm25 = BM25Okapi(corpus) if corpus else None
+    return sellers, bm25
+
+def district_similarity_score(farmer_district, seller_district):
+    farmer_district = str(farmer_district or "").lower().strip()
+    seller_district = str(seller_district or "").lower().strip()
+    if not farmer_district or not seller_district:
+        return 0.3
+    if farmer_district == seller_district:
+        return 1.0
+    if farmer_district in seller_district or seller_district in farmer_district:
+        return 0.7
+    return 0.3
+
+def commodity_match_score(query_crops, seller_commodities):
+    query_crops = [c.strip().lower() for c in str(query_crops or "").split(",") if c.strip()]
+    seller_commodities = str(seller_commodities or "").lower()
+    if not query_crops:
+        return 0.5
+    matches = sum(1 for crop in query_crops if crop in seller_commodities)
+    return min(matches / len(query_crops), 1.0)
+
+def normalize_value(val, min_val, max_val):
+    if max_val == min_val:
+        return 0.5
+    try:
+        return (val - min_val) / (max_val - min_val)
+    except Exception:
+        return 0.5
+
+# -------------------------
+# End recommendation helpers
+# -------------------------
 
 @app.post("/signUp")
 def signUp():
@@ -172,19 +194,41 @@ def signUp():
     password = data.get("password")
     role = data.get("role")
     state = data.get("state")
+
     if not uid or not email or not password or not role or not state:
-        return jsonify({"error": "Missing fields"}), 400
-    if mongo.db.users.find_one({"_id": uid}) or mongo.db.users.find_one({"email": email}):
+        return jsonify({"error": "Missing required general fields"}), 400
+
+    clean_uid = clean_alphanumeric(uid)
+
+    if mongo.db.users.find_one({"_id": clean_uid}) or mongo.db.users.find_one({"email": email}):
         return jsonify({"error": "This ID or email is already taken."}), 400
+
     hashed = generate_password_hash(password)
-    mongo.db.users.insert_one({
-        "_id": uid,
-        "email": email,
-        "password": hashed,
-        "role": role,
-        "state": state
-    })
-    return jsonify({"message": "Signup successful", "user": uid}), 201
+
+    user_doc = {
+        "_id": clean_uid, "email": email, "password": hashed, "role": role, "state": state
+    }
+
+    if role.lower() == "seller":
+        fpc_name = data.get("fpcName") or data.get("fpc_name")
+        district = data.get("district")
+        experience = data.get("experience")
+        commodities = data.get("commodities")
+        if not all([fpc_name, district, experience, commodities]):
+            return jsonify({"error": "Seller details (FPC, District, Experience, Commodities) are missing."}), 400
+        user_doc.update({
+            "fpcName": fpc_name,
+            "district": district,
+            "experience": experience,
+            "commodities": [c.strip() for c in commodities if c.strip()],
+        })
+
+    try:
+        mongo.db.users.insert_one(user_doc)
+        return jsonify({"message": "Signup successful", "user": uid}), 201
+    except Exception as e:
+        print(f"MongoDB Signup Error: {e}")
+        return jsonify({"error": "Failed to create user due to a database issue."}), 500
 
 @app.post("/login")
 def login():
@@ -193,138 +237,236 @@ def login():
     pw = data.get("password")
     if not uid or not pw:
         return jsonify({"error": "Missing fields"}), 400
-    user = mongo.db.users.find_one({"_id": uid})
+
+    clean_uid = clean_alphanumeric(uid)
+
+    user = mongo.db.users.find_one({"_id": clean_uid})
     if not user:
         return jsonify({"error": "Invalid userID"}), 400
     if not check_password_hash(user["password"], pw):
         return jsonify({"error": "Wrong password"}), 400
-    return jsonify({"message": "Login successful", "user": uid, "role": user.get("role")}), 200
 
+    response_data = {
+        "message": "Login successful",
+        "user": uid,
+        "role": user.get("role")
+    }
+
+    if user.get("role", "").lower() == "seller":
+        response_data["fpc_name"] = user.get("fpcName")
+    return jsonify(response_data), 200
+
+# -------------------------
+# Replaced /api/recommend
+# -------------------------
 @app.post("/api/recommend")
 def recommend():
-    data = request.get_json() or {}
-    crop_input = (data.get("crop") or "").strip().lower()
-    region_input = (data.get("region") or "").strip().lower()
-    crop_keywords = [k.strip().lower() for k in crop_input.split(",") if k.strip()]
-    region_clean = normalize_text(region_input)
-    if not crop_keywords or not region_clean:
-        return jsonify([]), 200
-    def commodity_match(commodities):
-        text = normalize_text(commodities)
-        return any(normalize_text(k) in text for k in crop_keywords)
-    def district_match(district):
-        return normalize_text(district) == region_clean
-    filtered = SELLERS[
-        SELLERS.apply(
-            lambda row: commodity_match(row["Commodities"]) and district_match(row["District"]),
-            axis=1
-        )
-    ].copy()
-    if filtered.empty:
-        return jsonify([]), 200
     try:
-        query = f"{crop_input} {region_input}".strip()
-        qv = VEC.transform([query])
-        sims = cosine_similarity(qv, MAT).flatten()
-        filtered["match_score"] = sims[filtered.index]
-        filtered = filtered.sort_values("match_score", ascending=False)
-    except Exception:
-        pass
-    top_result = filtered[[
-        "FPC_Name",
-        "District",
-        "Commodities",
-        "Email",
-        "Contact_Phone",
-        "seller_id"
-    ]].head(1).to_dict(orient="records")
-    return jsonify(top_result), 200
+        data = request.get_json() or {}
+        crop_input = data.get("crop", "").strip()
+        region_input = data.get("region", "").strip()
 
+        search_query = {"role": "seller"}
+
+        if crop_input:
+            search_query["commodities"] = {"$regex": crop_input, "$options": "i"}
+
+        if region_input:
+            search_query["district"] = {"$regex": region_input, "$options": "i"}
+
+        sellers = list(
+            mongo.db.users.find(
+                search_query,
+                {"_id": 1, "fpcName": 1, "district": 1, "commodities": 1}
+            )
+        )
+
+        result = []
+        for s in sellers:
+            fpc = s.get("fpcName") or s.get("_id")
+            district = s.get("district", "Unknown")
+            commodities = s.get("commodities", [])
+            commodities_str = ", ".join(commodities) if isinstance(commodities, list) else str(commodities)
+
+            result.append({
+                "FPC_Name": fpc,
+                "District": district,
+                "Commodities": commodities_str,
+                "fpc_name": fpc,
+                "fpc_id": s.get("_id"),
+                "crop": crop_input,
+                "region": region_input
+            })
+
+        return jsonify(result), 200
+
+    except Exception as e:
+        print("RECOMMENDATION ERROR:", e)
+        return jsonify({"error": "Recommendation failed"}), 500
+
+# -------------------------
+# Rest of the API (updated create_request + list_requests)
+# -------------------------
 @app.post("/api/request")
 def create_request():
     data = request.get_json() or {}
-    farmer_id = data.get("farmer_id")
-    farmer_name = data.get("farmer_name")
-    crop = data.get("crop")
-    region = data.get("region")
-    price = data.get("price", 0)
-    seller_id = data.get("seller_id")
-    if not farmer_id or not farmer_name or not crop or not region or not seller_id:
-        return jsonify({"error": "Missing required fields"}), 400
+    # Accept fpc_id if provided; otherwise try to resolve by fpc_name
+    provided_fpc_id = data.get("fpc_id")
+    fpc_value_raw = data.get("fpc_name") or data.get("fpcName") or ""
+    fpc_value = str(fpc_value_raw).strip()
+    farmer_id = clean_alphanumeric(data.get("farmer_id"))
+    required = ["farmer_name", "crop", "region", "price"]
+    if not fpc_value and not provided_fpc_id:
+        return jsonify({"error": "Missing fpc identifier (name or id)"}), 400
+    if not all(k in data for k in required):
+        return jsonify({"error": "Missing fields"}), 400
     try:
-        price_int = int(price)
-    except Exception:
-        price_int = 0
-    rid = str(uuid.uuid4())
-    req = {
-        "id": rid,
+        price_int = int(float(data.get("price")))
+    except:
+        return jsonify({"error": "Price must be a number"}), 400
+
+    # Normalize and find seller user if fpc_id not provided
+    fpc_id = None
+    fpc_name_store = fpc_value  # store as provided (original casing)
+    if provided_fpc_id:
+        fpc_id = clean_alphanumeric(provided_fpc_id)
+        # try to fetch actual display name if exists
+        seller_user = mongo.db.users.find_one({"_id": fpc_id})
+        if seller_user and seller_user.get("fpcName"):
+            fpc_name_store = seller_user.get("fpcName")
+    else:
+        # try find seller by fpcName (case-insensitive, trim)
+        if fpc_value:
+            seller_user = mongo.db.users.find_one({"fpcName": {"$regex": f"^{re.escape(fpc_value)}$", "$options": "i"}})
+            if not seller_user:
+                # fallback: partial match
+                seller_user = mongo.db.users.find_one({"fpcName": {"$regex": f"{re.escape(fpc_value)}", "$options": "i"}})
+            if seller_user:
+                fpc_id = seller_user.get("_id")
+                fpc_name_store = seller_user.get("fpcName", fpc_value)
+
+    request_id = str(uuid.uuid4())
+    req_doc = {
+        "id": request_id,
         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "farmer_id": farmer_id,
-        "farmer_name": farmer_name,
-        "crop": crop,
-        "region": region,
+        "farmer_name": data.get("farmer_name"),
+        "crop": data.get("crop"),
+        "region": data.get("region"),
         "price": price_int,
-        "seller_id": seller_id,
-        "status": "pending",
+        "fpc_name": fpc_name_store,
+        "fpc_id": fpc_id,
+        "status": "pending"
     }
-    REQUESTS.append(req)
-    NOTIFS.append({"to": seller_id, "msg": f"Farmer {farmer_name} wants to connect for {crop} in {region}"})
-    return jsonify({"ok": True, "request_id": rid}), 201
+
+    try:
+        mongo.db.requests.insert_one(req_doc)
+        notification_doc = {
+            "id": str(uuid.uuid4()),
+            "to": fpc_name_store,
+            "msg": f"Farmer {data.get('farmer_name')} wants to connect for {data.get('crop')} in {data.get('region')}",
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "read": False,
+            "request_id": request_id
+        }
+        mongo.db.notifications.insert_one(notification_doc)
+        return jsonify({"ok": True, "request_id": request_id}), 201
+    except Exception as e:
+        print(f"MongoDB Request Insert Error: {e}")
+        return jsonify({"error": "Failed to store request in DB."}), 500
 
 @app.get("/api/requests")
 def list_requests():
-    farmer_id = request.args.get("farmer_id")
-    seller_id_input = request.args.get("seller_id")
-    results = REQUESTS
-
-    if farmer_id:
-        results = [r for r in results if r.get("farmer_id") == farmer_id]
-
-    # FIX: Use the new clean_alphanumeric for robust, case-insensitive comparison
-    if seller_id_input:
-        normalized_input = clean_alphanumeric(seller_id_input)
-        
-        results = [
-            r for r in results
-            # Normalize the stored seller_id to match the cleaned input
-            if clean_alphanumeric(r.get("seller_id")) == normalized_input
-        ]
-
-    return jsonify(results), 200
+    farmer = request.args.get("farmer_id")
+    fpc = request.args.get("fpc_name")
+    fpc_id = request.args.get("fpc_id")
+    q = {}
+    if farmer:
+        q["farmer_id"] = clean_alphanumeric(farmer)
+    if fpc_id:
+        q["fpc_id"] = clean_alphanumeric(fpc_id)
+    if fpc:
+        # case-insensitive substring match for flexibility
+        q["fpc_name"] = {"$regex": re.escape(fpc.strip()), "$options": "i"}
+    try:
+        data = list(mongo.db.requests.find(q, {"_id": 0}))
+        return jsonify(data), 200
+    except Exception as e:
+        print(f"Request fetch error: {e}")
+        return jsonify({"error": "Failed to fetch requests"}), 500
 
 @app.post("/api/accept/<rid>")
 def accept_request(rid):
-    for r in REQUESTS:
-        if r["id"] == rid and r["status"] == "pending":
-            tx = create_blockchain_deal(r["crop"], r["region"], r["price"])
-            r["status"] = "accepted"
-            r["tx_hash"] = tx
-            return jsonify({"ok": True, "tx_hash": tx}), 200
+    try:
+        result = mongo.db.requests.find_one({"id": rid})
+        if result and result["status"] == "pending":
+            tx = create_blockchain_deal(result["crop"], result["region"], result["price"])
+            update_result = mongo.db.requests.update_one(
+                {"id": rid},
+                {"$set": {"status": "accepted", "tx_hash": tx}}
+            )
+            mongo.db.notifications.update_many(
+                {"request_id": rid},
+                {"$set": {"read": True}}
+            )
+            if update_result.modified_count > 0:
+                return jsonify({"ok": True, "tx_hash": tx}), 200
+    except Exception as e:
+        print(f"Accept error: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
     return jsonify({"ok": False}), 404
 
 @app.post("/api/reject/<rid>")
 def reject_request(rid):
-    for r in REQUESTS:
-        if r["id"] == rid and r["status"] == "pending":
-            r["status"] = "rejected"
+    try:
+        update_result = mongo.db.requests.update_one(
+            {"id": rid, "status": "pending"},
+            {"$set": {"status": "rejected"}}
+        )
+        mongo.db.notifications.update_many(
+            {"request_id": rid},
+            {"$set": {"read": True}}
+        )
+        if update_result.modified_count > 0:
             return jsonify({"ok": True}), 200
+    except Exception as e:
+        print(f"Reject error: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
     return jsonify({"ok": False}), 404
+
+@app.post("/api/request/delete/<rid>")
+def delete_request(rid):
+    try:
+        req = mongo.db.requests.find_one({"id": rid})
+        if not req:
+            return jsonify({"ok": False, "error": "Request not found"}), 404
+        farmer_id = req.get("farmer_id")
+        fpc_id = req.get("fpc_id")
+        mongo.db.requests.delete_one({"id": rid})
+        mongo.db.notifications.delete_many({"request_id": rid})
+        room1 = f"{farmer_id}_{fpc_id}" if farmer_id and fpc_id else None
+        room2 = f"{fpc_id}_{farmer_id}" if farmer_id and fpc_id else None
+        global CHATS
+        CHATS = [m for m in CHATS if not (m.get("room") == room1 or m.get("room") == room2)]
+        return jsonify({"ok": True}), 200
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
 
 @app.get("/api/notifications")
 def notifications():
-    seller_input = request.args.get("seller")
-    
-    if not seller_input:
-        return jsonify([]), 200 
-
-    # FIX: Use the new clean_alphanumeric for robust, case-insensitive comparison
-    normalized_seller = clean_alphanumeric(seller_input)
-    
-    return jsonify([
-        n for n in NOTIFS 
-        # Normalize the stored 'to' field (seller_id) to match the cleaned input
-        if clean_alphanumeric(n.get("to")) == normalized_seller
-    ]), 200
+    fpc_name_input = request.args.get("fpc_name")
+    if not fpc_name_input:
+        return jsonify([]), 200
+    normalized = fpc_name_input.strip()
+    try:
+        notifs = list(mongo.db.notifications.find(
+            {"to": {"$regex": f"{re.escape(normalized)}", "$options": "i"}},
+            {"_id": 0}
+        ).sort("timestamp", -1))
+        return jsonify(notifs), 200
+    except Exception as e:
+        print(f"Notification fetch error: {e}")
+        return jsonify({"error": "Failed to fetch notifications"}), 500
 
 @app.post("/api/chat/send")
 def send_message():
@@ -338,8 +480,8 @@ def send_message():
     msg = {
         "id": str(uuid.uuid4()),
         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "sender": sender,
-        "receiver": receiver,
+        "sender": str(sender),
+        "receiver": str(receiver),
         "text": text,
         "room": room,
     }
@@ -390,6 +532,21 @@ def get_crops():
         return jsonify({"error": "userID required"}), 400
     crops = list(mongo.db.crops.find({"userID": userID}, {"_id": 0}))
     return jsonify(crops), 200
+
+@app.get("/api/user")
+def get_user():
+    uid = request.args.get("id")
+    if not uid:
+        return jsonify({"error": "id required"}), 400
+
+    clean_uid = clean_alphanumeric(uid)
+    user = mongo.db.users.find_one({"_id": clean_uid}, {"_id": 0})
+
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    return jsonify(user), 200
+
 
 @app.get("/")
 def home():

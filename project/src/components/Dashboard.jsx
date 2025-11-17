@@ -26,7 +26,7 @@ export default function Dashboard() {
   const fetchCrops = async () => {
     try {
       const res = await fetch(
-        `http://192.168.0.104:5000/api/crops/get?userID=${userID}`
+        `http://192.168.1.5:5000/api/crops/get?userID=${userID}`
       );
       const data = await res.json();
       if (res.ok) setFarmList(data);
@@ -41,7 +41,7 @@ export default function Dashboard() {
     const payload = { userID, text: farmInput, date: farmDate };
 
     try {
-      const res = await fetch("http://192.168.0.104:5000/api/crops/add", {
+      const res = await fetch("http://192.168.1.5:5000/api/crops/add", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
