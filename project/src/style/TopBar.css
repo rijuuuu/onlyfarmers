@@ -1,7 +1,7 @@
 .topbar {
   margin: 0;
-  background-color: #f0ead2;
-  color: #6c584c;
+  background-color: var(--color-bg);
+  color: var(--color-subtle);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -12,6 +12,7 @@
   left: 0;
   right: 0;
   z-index: 1000;
+  transition: background-color var(--transition-theme), color var(--transition-theme);
 }
 
 .name {
@@ -35,10 +36,11 @@
 }
 
 .marketLink {
-  color: #6c584c;
+  color: var(--color-subtle);
   font-weight: 600;
   font-size: 12px;
   cursor: pointer;
+  transition: color var(--transition-theme);
 }
 
 .menu-container {
@@ -48,7 +50,7 @@
 .menu-button {
   background: none;
   border: none;
-  color: #6c584c;
+  color: var(--color-subtle);
   font-weight: 600;
   font-size: 12px;
   display: flex;
@@ -62,10 +64,7 @@
 .menu-button:focus,
 .menu-button:hover,
 .menu-button:active {
-  background: none !important;
-  outline: none !important;
-  box-shadow: none !important;
-  color: #6c584c !important;
+  color: var(--color-text);
 }
 
 .menu-icon {
@@ -78,10 +77,10 @@
   position: absolute;
   top: 35px;
   right: 0;
-  background-color: #fff;
-  border: 1px solid #ccc;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 10px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-strong);
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -94,108 +93,68 @@
   margin: 0;
   font-size: 0.9rem;
   font-weight: 500;
-  color: #6c584c;
+  color: var(--color-text);
   cursor: pointer;
+  transition: color var(--transition-theme);
+}
+
+.menu-dropdown p:hover {
+  color: var(--color-primary);
 }
 
 .right-section {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
   position: relative;
 }
 
-.notification-icon {
-  position: relative;
-  color: #6c584c;
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--color-subtle);
   cursor: pointer;
+  padding: 0;
+  transition: color var(--transition-theme);
 }
 
-.notif-dot {
-  position: absolute;
-  top: -3px;
-  right: -3px;
-  height: 8px;
-  width: 8px;
-  background-color: red;
-  border-radius: 50%;
+.theme-toggle:hover {
+  color: var(--color-primary);
 }
 
-.notification-box {
-  position: absolute;
-  top: 50px;
-  right: 120px;
-  width: 280px;
-  background: #ffffff;
-  border: 1px solid #ccc;
-  border-radius: 10px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
-  padding: 10px 15px;
-  color: #333;
-  z-index: 9999;
-  max-height: 350px;
-  overflow-y: auto;
-}
-
-.notification-box h4 {
-  margin: 0;
-  margin-bottom: 8px;
-  font-size: 1rem;
-  font-weight: 600;
-  color: #386641;
-}
-
-.alert-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.alert-item {
-  background-color: #f6f6f6;
-  padding: 8px;
-  border-radius: 8px;
-}
-
-.alert-event {
-  font-weight: 600;
-  color: #3a5a40;
-  margin: 0;
+.loginBtn,
+.logoutBtn {
+  padding: 8px 25px;
+  border: none;
+  border-radius: 25px;
   font-size: 0.9rem;
-}
-
-.alert-desc {
-  font-size: 0.85rem;
-  margin: 4px 0 0;
-  color: #444;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition-theme), color var(--transition-theme), transform 0.15s ease;
 }
 
 .loginBtn {
-  background-color: #6c584c;
-  color: white;
-  padding: 8px 25px;
-  border: none;
-  border-radius: 25px;
-  font-size: 0.9rem;
-  font-weight: 600;
-  cursor: pointer;
+  background-color: var(--color-subtle);
+  color: var(--color-button-text);
 }
 
 .logoutBtn {
-  background-color: #adc178;
-  color: #2d2d2d;
-  padding: 8px 25px;
-  border: none;
-  border-radius: 25px;
-  font-size: 0.9rem;
-  font-weight: 600;
-  cursor: pointer;
+  background-color: var(--color-secondary);
+  color: var(--color-button-text);
+}
+
+.loginBtn:hover,
+.logoutBtn:hover {
+  transform: translateY(-1px);
 }
 
 /* Hamburger styles */
 .hamburger {
   display: none;
-  color: #6c584c;
+  color: var(--color-subtle);
   cursor: pointer;
 }
 
@@ -204,10 +163,10 @@
   top: 65px;
   right: 10px;
   width: 200px;
-  background-color: #fff;
-  border: 1px solid #ccc;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 10px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-strong);
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -219,7 +178,7 @@
   margin: 0;
   font-size: 0.9rem;
   font-weight: 500;
-  color: #6c584c;
+  color: var(--color-text);
   cursor: pointer;
 }
 
@@ -231,11 +190,6 @@
 
   .hamburger {
     display: block;
-  }
-
-  .notification-box {
-    right: 40px;
-    width: 240px;
   }
 
   .topbar {

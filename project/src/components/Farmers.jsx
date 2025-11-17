@@ -155,18 +155,20 @@ export default function Farmer() {
       <h2>Active Chats</h2>
 
       {acceptedDeals.map((d) => (
-        <div key={d.id} style={{ marginBottom: 10, display: "flex", justifyContent: "space-between" }}>
+        <div key={d.id} className="deal-row">
           <div>
-            <div style={{ fontWeight: 700, color: "#155c34" }}>{d.fpc_name}</div>
-            <div style={{ fontSize: 13 }}>{d.crop} • {d.region}</div>
+            <div className="deal-title">{d.fpc_name}</div>
+            <div className="deal-info">
+              {d.crop} • {d.region}
+            </div>
           </div>
 
-          <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={() => handleOpenChat(d)} style={{ background: "#46b96b", padding: "8px 10px", color: "white", borderRadius: 8, border: "none" }}>
+          <div className="deal-actions">
+            <button className="open-chat" onClick={() => handleOpenChat(d)}>
               Open Chat
             </button>
 
-            <button onClick={() => deleteReq(d.id)} style={{ background: "#ffe8e8", padding: "8px 10px", color: "#b72833", borderRadius: 8, border: "1px solid #ffbdbd" }}>
+            <button className="delete-btn" onClick={() => deleteReq(d.id)}>
               Delete
             </button>
           </div>

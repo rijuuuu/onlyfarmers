@@ -1,5 +1,7 @@
 .App {
-  font-family: Arial, sans-serif;
+  font-family: "Poppins", sans-serif;
   padding: 20px;
-  background-color: #f5f5f5;
+  background-color: var(--color-bg-alt);
+  color: var(--color-text);
+  transition: background-color var(--transition-theme), color var(--transition-theme);
 }

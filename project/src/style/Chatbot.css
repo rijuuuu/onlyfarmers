@@ -4,15 +4,15 @@
   bottom: 40px;
   width: 430px;
   max-width: 92%;
-  background: #faf7ed !important;
+  background: var(--color-surface-elevated) !important;
   border-radius: 15px;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.14);
+  box-shadow: var(--shadow-strong);
   display: flex;
   flex-direction: column;
   min-height: calc(100vh - 120px);
   overflow: hidden;
   z-index: 999;
-  transition: transform 0.25s ease, opacity 0.22s ease;
+  transition: transform 0.25s ease, opacity 0.22s ease, background var(--transition-theme);
 }
 
 /* HEADER */
@@ -20,8 +20,8 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: #3a5a40;
-  color: #fff;
+  background: var(--color-primary-strong);
+  color: var(--color-button-text);
   padding: 14px 16px;
   font-weight: 600;
 }
@@ -34,7 +34,7 @@
 .close-btn {
   background: transparent;
   border: none;
-  color: white;
+  color: var(--color-button-text);
   font-size: 1.2rem;
   cursor: pointer;
   padding: 4px 6px;
@@ -53,7 +53,7 @@
 /* ERROR */
 .error-msg {
   align-self: center;
-  color: #d9534f;
+  color: var(--color-alert);
   font-weight: bold;
   font-size: 11px;
   padding: 10px 16px;
@@ -72,22 +72,23 @@
 }
 
 .bot-bubble {
-  background: #a3b18a;
-  color: #fff;
+  background: var(--color-secondary);
+  color: var(--color-button-text);
   align-self: flex-start;
 }
 
 .user-bubble {
-  background: #3a5a40;
-  color: #fff;
+  background: var(--color-primary-strong);
+  color: var(--color-button-text);
   align-self: flex-end;
 }
 
 /* INPUT AREA */
 .msg-box {
   padding: 12px 14px;
-  background: #fff;
-  border-top: 1px solid rgba(0,0,0,0.1);
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+  transition: background var(--transition-theme), border var(--transition-theme);
 }
 
 .msg-box form {
@@ -100,15 +101,17 @@
   flex: 1;
   padding: 12px 14px;
   border-radius: 28px;
-  border: 1px solid #ccc;
+  border: 1px solid var(--color-border);
   font-size: 1rem;
-  background: #fafafa;
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+  transition: border var(--transition-theme), background var(--transition-theme), color var(--transition-theme);
 }
 
 /* RESTORED BUTTON STYLING */
 .msg-box button {
-  background: #6c584c;
-  color: #fff;
+  background: var(--color-subtle);
+  color: var(--color-button-text);
   border: none;
   padding: 10px 20px;
   border-radius: 28px;
@@ -120,7 +123,7 @@
 }
 
 .msg-box button:hover {
-  background: #a98467;
+  background: var(--color-secondary);
 }
 
 .msg-box button:disabled {
@@ -133,8 +136,8 @@
   position: fixed;
   bottom: 2rem;
   right: 2rem;
-  background: #3a5a40;
-  color: white;
+  background: var(--color-primary-strong);
+  color: var(--color-button-text);
   font-size: 1.8rem;
   width: 55px;
   height: 55px;
@@ -144,8 +147,8 @@
   align-items: center;
   cursor: pointer;
   z-index: 9999;
-  box-shadow: 0 0 10px rgba(0,0,0,0.2);
-  transition: transform 0.2s ease-in-out;
+  box-shadow: var(--shadow-soft);
+  transition: transform 0.2s ease-in-out, background var(--transition-theme);
 }
 
 /* SCROLLBAR */

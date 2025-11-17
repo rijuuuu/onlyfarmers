@@ -48,8 +48,8 @@
   position: fixed;
   bottom: 2rem;
   right: 2rem;
-  background: #3a5a40;
-  color: white;
+  background: var(--color-primary-strong);
+  color: var(--color-button-text);
   font-size: 1.8rem;
   width: 55px;
   height: 55px;
@@ -59,8 +59,8 @@
   align-items: center;
   cursor: pointer;
   z-index: 1100;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
-  transition: transform 0.2s ease-in-out;
+  box-shadow: var(--shadow-soft);
+  transition: transform 0.2s ease-in-out, background var(--transition-theme);
 }
 
 .chatbot-icon:hover {

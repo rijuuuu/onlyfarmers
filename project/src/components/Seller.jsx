@@ -135,20 +135,27 @@ export default function Seller() {
 
       <section className="glass-box">
         <h3>Accepted Chats</h3>
-        {done.filter((r) => r.status === "accepted").map((d) => (
-          <div key={d.id} style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
-            <div>
-              <div style={{ fontWeight: 700 }}>{d.farmer_name}</div>
-              <div style={{ fontSize: 13 }}>{d.crop} • {d.region}</div>
-            </div>
+        {done
+          .filter((r) => r.status === "accepted")
+          .map((d) => (
+            <div key={d.id} className="seller-deal-row">
+              <div className="seller-deal-info">
+                <div className="seller-deal-name">{d.farmer_name}</div>
+                <div className="seller-deal-meta">
+                  {d.crop} • {d.region}
+                </div>
+              </div>
 
-            <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={() => handleOpenChat(d)} style={{ background: "#46b96b", padding: "8px 10px", color: "white", borderRadius: 8, border: "none" }}>
-                Open Chat
-              </button>
+              <div className="seller-deal-actions">
+                <button
+                  className="seller-open-chat"
+                  onClick={() => handleOpenChat(d)}
+                >
+                  Open Chat
+                </button>
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
       </section>
     </div>
   );

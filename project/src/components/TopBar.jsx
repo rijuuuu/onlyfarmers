@@ -3,21 +3,22 @@ import icon from "../icon/logo.png";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
 import {
-  FaBell,
   FaChevronDown,
   FaChevronUp,
   FaBars,
   FaTimes,
+  FaSun,
+  FaMoon,
 } from "react-icons/fa";
+import { useTheme } from "../context/ThemeContext";
 
 function TopBar() {
   const navigate = useNavigate();
   const userID = localStorage.getItem("uniqueID");
   const [menuOpen, setMenuOpen] = useState(false);
-  const [showNotification, setShowNotification] = useState(false);
-  const [weatherAlerts, setWeatherAlerts] = useState([]);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const dropdownRef = useRef(null);
+  const { theme, toggleTheme } = useTheme();
 
   const goToLogin = () => navigate("/login");
   const handleLogout = () => {
@@ -27,35 +28,28 @@ function TopBar() {
   };
   const goToHome = () => navigate("/home");
   const goToMarket = () => {
-  const userID = localStorage.getItem("uniqueID");
-  const role = localStorage.getItem("role");
+    const userID = localStorage.getItem("uniqueID");
+    const role = localStorage.getItem("role");
 
-  // Not logged in
-  if (!userID) {
-    navigate("/login");
-    return;
-  }
+    if (!userID) {
+      navigate("/login");
+      return;
+    }
 
-  // If role is missing → assume farmer (default)
-  if (!role) {
-    navigate("/farmer");
-    return;
-  }
+    if (!role) {
+      navigate("/farmer");
+      return;
+    }
 
-  if (role === "farmer") navigate("/farmer");
-  else if (role === "seller") navigate("/seller");
-  else navigate("/farmer"); // fallback
-};
-
+    if (role === "farmer") navigate("/farmer");
+    else if (role === "seller") navigate("/seller");
+    else navigate("/farmer");
+  };
 
   const handleNavigation = (path) => {
     navigate(`/${path}`);
     setMenuOpen(false);
     setMobileMenuOpen(false);
-  };
-
-  const toggleNotifications = () => {
-    setShowNotification(!showNotification);
   };
 
   const toggleMenu = () => {
@@ -69,7 +63,6 @@ function TopBar() {
   useEffect(() => {
     const handleOutsideClick = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
-        setShowNotification(false);
         setMenuOpen(false);
         setMobileMenuOpen(false);
       }
@@ -77,30 +70,6 @@ function TopBar() {
     document.addEventListener("mousedown", handleOutsideClick);
     return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, []);
-
-  useEffect(() => {
-    if (showNotification) {
-      navigator.geolocation.getCurrentPosition(async (position) => {
-        const { latitude, longitude } = position.coords;
-        const apiKey = "YOUR_OPENWEATHER_API_KEY";
-        try {
-          const response = await fetch(
-            `https://api.openweathermap.org/data/3.0/onecall?lat=${latitude}&lon=${longitude}&exclude=current,minutely,hourly,daily&appid=${apiKey}`
-          );
-          const data = await response.json();
-          if (data.alerts && data.alerts.length > 0) {
-            setWeatherAlerts(data.alerts);
-          } else {
-            setWeatherAlerts([
-              { event: "No active weather alerts at your location." },
-            ]);
-          }
-        } catch (error) {
-          setWeatherAlerts([{ event: "Failed to fetch weather alerts." }]);
-        }
-      });
-    }
-  }, [showNotification]);
 
   return (
     <div className="topbar">
@@ -152,30 +121,17 @@ function TopBar() {
         </div>
       </div>
 
-      {/* RIGHT: Notifications + Login + Mobile Hamburger */}
+      {/* RIGHT: Theme Toggle + Login + Mobile Hamburger */}
       <div className="right-section">
-        <div className="notification-icon" onClick={toggleNotifications}>
-          <FaBell size={20} />
-          {weatherAlerts.length > 0 && !showNotification && (
-            <span className="notif-dot"></span>
-          )}
-        </div>
-
-        {showNotification && (
-          <div className="notification-box">
-            <h4>Weather Alerts</h4>
-            <div className="alert-list">
-              {weatherAlerts.map((alert, index) => (
-                <div key={index} className="alert-item">
-                  <p className="alert-event">{alert.event}</p>
-                  {alert.description && (
-                    <p className="alert-desc">{alert.description}</p>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        <button
+          className="theme-toggle"
+          onClick={toggleTheme}
+          aria-label="Toggle color theme"
+          title={theme === "light" ? "Enable dark mode" : "Enable light mode"}
+          type="button"
+        >
+          {theme === "light" ? <FaMoon size={16} /> : <FaSun size={16} />}
+        </button>
 
         <button
           className={userID ? "logoutBtn" : "loginBtn"}

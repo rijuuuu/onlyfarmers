@@ -9,6 +9,7 @@ import SignUp from "./components/SignUp";
 import Seller from "./components/Seller";
 import Farmers from "./components/Farmers";
 import ChatBox from "./components/Chatbot";
+import { ThemeProvider } from "./context/ThemeContext";
 
 function AppRoutes() {
   const location = useLocation();
@@ -36,8 +37,10 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <Router>
-      <AppRoutes />
-    </Router>
+    <ThemeProvider>
+      <Router>
+        <AppRoutes />
+      </Router>
+    </ThemeProvider>
   );
 }
