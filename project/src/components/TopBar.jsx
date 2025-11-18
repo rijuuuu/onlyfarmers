@@ -23,14 +23,14 @@ function TopBar() {
   const goToLogin = () => navigate("/login");
   const handleLogout = () => {
     localStorage.removeItem("uniqueID");
-    localStorage.removeItem("role");
+    localStorage.removeItem("userRole"); 
     goToHome();
     window.location.reload();
   };
   const goToHome = () => navigate("/home");
   const goToMarket = () => {
     const userID = localStorage.getItem("uniqueID");
-    const role = (localStorage.getItem("role") || "").toLowerCase();
+    const role = (localStorage.getItem("userRole") || "").toLowerCase(); 
 
     if (!userID) {
       navigate("/login");
