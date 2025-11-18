@@ -24,26 +24,26 @@ function TopBar() {
   const handleLogout = () => {
     localStorage.removeItem("uniqueID");
     localStorage.removeItem("role");
+    goToHome();
     window.location.reload();
   };
   const goToHome = () => navigate("/home");
   const goToMarket = () => {
     const userID = localStorage.getItem("uniqueID");
-    const role = localStorage.getItem("role");
+    const role = (localStorage.getItem("role") || "").toLowerCase();
 
     if (!userID) {
       navigate("/login");
       return;
     }
 
-    if (!role) {
+    if (role === "farmer") {
       navigate("/farmer");
-      return;
+    } else if (role === "seller") {
+      navigate("/seller");
+    } else {
+      navigate("/farmer");
     }
-
-    if (role === "farmer") navigate("/farmer");
-    else if (role === "seller") navigate("/seller");
-    else navigate("/farmer");
   };
 
   const handleNavigation = (path) => {
@@ -86,7 +86,7 @@ function TopBar() {
 
         <div className="menu-container" ref={dropdownRef}>
           <button className="menu-button" onClick={toggleMenu}>
-            <p>More Options{" "}</p>
+            <p>More Options </p>
             <span className="menu-icon">
               {menuOpen ? (
                 <FaChevronUp size={14} />

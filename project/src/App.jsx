@@ -1,5 +1,10 @@
 // project/src/App.jsx
-import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  useLocation,
+} from "react-router-dom";
 import React from "react";
 
 import Home from "./components/Home";
@@ -26,6 +31,7 @@ function AppRoutes() {
         <Route path="/login" element={<Login />} />
         <Route path="/signUp" element={<SignUp />} />
 
+        {/* ✅ FIXED — Correctly assign panels */}
         <Route path="/seller" element={<Seller />} />
         <Route path="/farmer" element={<Farmers />} />
       </Routes>

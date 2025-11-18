@@ -3,6 +3,7 @@ import { Toaster, toast } from "react-hot-toast";
 import { recommend, createRequest, listRequests } from "../api"; 
 import API from "../api"; 
 import BuyerSellerChat from "./BuyerSellerChat"; 
+import { FaStar, FaCalendarAlt, FaBullseye, FaPhone, FaMapMarkerAlt, FaHandshake } from "react-icons/fa";
 import "../style/Farmers.css";
 
 export default function Farmer() {
@@ -35,8 +36,8 @@ export default function Farmer() {
       const payload = {
         farmer_id,
         farmer_name,
-        crop: s.crop,
-        region: s.region,
+        crop: crop, // Use the crop from search input
+        region: region, // Use the region from search input
         price,
         fpc_name: (s.fpc_name || s.FPC_Name || "").toString().toLowerCase(),
         fpc_id: s.fpc_id || ""
@@ -143,11 +144,46 @@ export default function Farmer() {
       <div className="seller-list">
         {sellers.map((s, i) => (
           <div key={i} className="seller-card">
-            <div className="card-logo">{(s.FPC_Name || s.fpc_name || "F").charAt(0)}</div>
-            <h3>{s.FPC_Name || s.fpc_name}</h3>
-            <p>{s.District}</p>
-            <p className="commodities">{s.Commodities}</p>
-            <button onClick={() => sendReq(s)}>Send Request</button>
+            <div className="card-header">
+              <div className="card-logo">{(s.FPC_Name || s.fpc_name || "F").charAt(0)}</div>
+              <div className="card-header-text">
+                <h3>{s.FPC_Name || s.fpc_name}</h3>
+                <div className="card-location">
+                  <FaMapMarkerAlt className="location-icon" />
+                  <span>{s.District}</span>
+                </div>
+              </div>
+            </div>
+            <p className="commodities">Deals in: {s.Commodities}</p>
+            
+            <div className="card-stats">
+              <div className="stat-item">
+                <FaStar className="stat-icon star-icon" />
+                <span className="stat-value">{s.Rating || 5}/10</span>
+              </div>
+              <div className="stat-item">
+                <FaCalendarAlt className="stat-icon calendar-icon" />
+                <span className="stat-value">{s.Years_of_Experience || 0} yrs</span>
+              </div>
+              <div className="stat-item">
+                <FaBullseye className="stat-icon match-icon" />
+                <span className="stat-value">
+                  {s.match_percentage ? Number(s.match_percentage).toFixed(1) : "0.0"}%
+                </span>
+              </div>
+            </div>
+
+            {s.Contact_Phone && (
+              <div className="card-phone">
+                <FaPhone className="phone-icon" />
+                <span>{s.Contact_Phone}</span>
+              </div>
+            )}
+
+            <button className="send-request-btn" onClick={() => sendReq(s)}>
+              {/* <FaHandshake className="btn-icon" /> */}
+              Send Request
+            </button>
           </div>
         ))}
       </div>

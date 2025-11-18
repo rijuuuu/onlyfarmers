@@ -4,16 +4,13 @@
 .dashboard {
   flex: 1;
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
   align-items: flex-start;
   box-sizing: border-box;
+  height: calc(100vh - 70px);
   width: 100%;
   font-family: "Poppins", sans-serif;
-  min-height: calc(100vh - 70px);
-  height: auto;
-  overflow-x: hidden;
-  overflow-y: auto;
-  padding-bottom: 1rem;
+  overflow: hidden;
 }
 
 /* ============================
@@ -22,10 +19,10 @@
 .grid-container {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  grid-auto-rows: minmax(140px, auto);
-  gap: 1rem;
-  width: min(90%, 1200px);
-  padding: 1rem;
+  grid-auto-rows: auto;
+  gap: 0.9rem;
+  width: 100%;
+  padding: 0.8rem 1rem;
   box-sizing: border-box;
 }
 
@@ -33,17 +30,16 @@
    dashcard BASE STYLE
 ============================ */
 .dashcard {
-  background: var(--gradient-dashboard);
+  background: linear-gradient(145deg, #f9f7e8 0%, #f5f2df 50%, #efeccf 100%);
   border-radius: 12px;
-  color: var(--color-text);
+  color: #000;
   padding: 1rem;
-  min-height: 150px;
+  min-height: 80px;
   display: flex;
   flex-direction: column;
   width: 100%;
-  box-shadow: var(--shadow-soft);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
   box-sizing: border-box;
-  transition: background var(--transition-theme), color var(--transition-theme), box-shadow var(--transition-theme);
 }
 
 /* ============================
@@ -110,10 +106,7 @@
   flex: 1;
   padding: 0.5rem;
   border-radius: 6px;
-  border: 1px solid var(--color-border-strong);
-  background: var(--color-surface);
-  color: var(--color-text);
-  transition: border var(--transition-theme), background var(--transition-theme), color var(--transition-theme);
+  border: 1px solid #c7c7b8;
 }
 
 .date-input {
@@ -121,19 +114,16 @@
 }
 
 .farm-btn {
-  background: var(--color-primary);
+  background: #758c4f;
   border: none;
   padding: 0.5rem 1rem;
   border-radius: 6px;
-  color: var(--color-button-text);
+  color: white;
   cursor: pointer;
-  font-weight: 600;
-  transition: background var(--transition-theme), transform 0.15s ease;
 }
 
 .farm-btn:hover {
-  background: var(--color-primary-strong);
-  transform: translateY(-1px);
+  background: #607741;
 }
 
 .farm-list {
@@ -174,17 +164,20 @@
 }
 
 .farm-countdown {
-  color: var(--color-heading);
+  color: #2f6b2f;
   font-weight: 700;
 }
 
 /* ============================
    RESPONSIVE BREAKPOINTS
 ============================ */
-
+/* -------------------------------------
+   1200px Breakpoint (Tablet / Small Laptop)
+--------------------------------------*/
 @media (max-width: 1200px) {
   .grid-container {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(2, 1fr);
+    width: 100%; /* FULL WIDTH FIX */
   }
 
   .name-location,
@@ -203,15 +196,34 @@
   }
 }
 
+/* -------------------------------------
+   768px Breakpoint (Mobile)
+--------------------------------------*/
 @media (max-width: 768px) {
   .grid-container {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr;         /* Fix: Single column layout */
     gap: 1.2rem;
     padding: 1rem;
+    width: 100% !important;            /* Fix: FULL WIDTH */
   }
 
   .grid-container > .dashcard {
-    grid-column: 1 / -1 !important;
+    grid-column: 1 / -1 !important;    /* Force full width */
+    width: 100% !important;            /* FIX: ensure no shrinking */
+  }
+
+  /* Make farm list area scrollable */
+  .farm-list {
+    max-height: 300px !important;       /* FIX: height 300px */
+    overflow-y: auto !important;        /* Scroll enabled */
+    padding-right: 4px;
+  }
+
+  /* Govt schemes list height fix */
+  .schemes .farm-list,
+  .schemes-list {
+    max-height: 300px !important;       /* FIX: height 300px */
+    overflow-y: auto !important;        /* Scrollable */
   }
 
   .farm-input-row {
@@ -233,13 +245,18 @@
   }
 }
 
+/* -------------------------------------
+   480px Breakpoint (Small Mobile)
+--------------------------------------*/
 @media (max-width: 480px) {
   .grid-container {
     padding: 0.75rem;
+    width: 100% !important;            /* 100% width */
   }
 
   .dashcard {
     padding: 0.85rem;
+    width: 100% !important;            /* Ensure full width */
   }
 
   .loc-row {

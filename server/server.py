@@ -139,11 +139,15 @@ def build_seller_docs_from_db():
         seller['address'] = s.get("address", "") or s.get("Address", "")
         seller['contact_phone'] = s.get("contact_phone", "") or s.get("Contact_Phone", "")
         try:
-            seller['rating'] = float(s.get("rating", s.get("Rating", 5))) if s.get("rating", None) is not None else 5.0
+            # Handle rating as string or number
+            rating_value = s.get("rating") or s.get("Rating") or 5
+            seller['rating'] = float(rating_value) if rating_value is not None else 5.0
         except Exception:
             seller['rating'] = 5.0
         try:
-            seller['years_of_experience'] = float(s.get("years_of_experience", s.get("Years_of_Experience", 5))) if s.get("years_of_experience", None) is not None else 5.0
+            # Check for experience field (as stored in MongoDB) or years_of_experience
+            exp_value = s.get("experience") or s.get("years_of_experience") or s.get("Years_of_Experience") or 5
+            seller['years_of_experience'] = float(exp_value) if exp_value is not None else 5.0
         except Exception:
             seller['years_of_experience'] = 5.0
 
@@ -261,47 +265,150 @@ def login():
 # -------------------------
 @app.post("/api/recommend")
 def recommend():
+    """
+    Advanced recommendation system using:
+    - BM25 for semantic search
+    - Rating boost (highest priority - 40%)
+    - District matching (high priority - 25%)
+    - Commodity matching (base requirement - 20%)
+    - Years of experience (moderate priority - 10%)
+    - BM25 semantic search (5%)
+    """
     try:
         data = request.get_json() or {}
         crop_input = data.get("crop", "").strip()
-        region_input = data.get("region", "").strip()
+        district_input = data.get("district", "").strip()
+        state_input = data.get("state", "").strip()
+        
+        # Fallback for backward compatibility
+        if not district_input:
+            district_input = data.get("region", "").strip()
 
-        search_query = {"role": "seller"}
+        # Step 1: Get all sellers and build BM25 corpus (only once)
+        all_sellers, bm25_model = build_seller_docs_from_db()
+        
+        if not all_sellers:
+            return jsonify([]), 200
 
-        if crop_input:
-            search_query["commodities"] = {"$regex": crop_input, "$options": "i"}
+        # Step 2: Filter by commodity (base requirement)
+        crop_keywords = [c.strip().lower() for c in crop_input.split(",") if c.strip()]
+        matched_sellers = []
+        
+        if crop_keywords:
+            # Filter sellers that have at least one matching commodity
+            for seller in all_sellers:
+                seller_commodities_str = str(seller.get("commodities", "")).lower()
+                if any(keyword in seller_commodities_str for keyword in crop_keywords):
+                    matched_sellers.append(seller)
+        else:
+            # If no crop specified, include all sellers
+            matched_sellers = all_sellers
 
-        if region_input:
-            search_query["district"] = {"$regex": region_input, "$options": "i"}
+        if not matched_sellers:
+            return jsonify([]), 200
 
-        sellers = list(
-            mongo.db.users.find(
-                search_query,
-                {"_id": 1, "fpcName": 1, "district": 1, "commodities": 1}
+        # Step 3: Calculate BM25 scores
+        query = f"{crop_input} {district_input} {state_input}".strip()
+        tokenized_query = preprocess_text_for_bm25(query)
+        
+        # Get BM25 scores for all sellers in corpus, then map to matched sellers
+        bm25_scores_dict = {}
+        if bm25_model and len(all_sellers) > 0:
+            all_scores = bm25_model.get_scores(tokenized_query)
+            for idx, seller in enumerate(all_sellers):
+                seller_id = seller.get("_id")
+                if seller_id:
+                    bm25_scores_dict[seller_id] = all_scores[idx] if idx < len(all_scores) else 0.0
+
+        # Step 4: Calculate component scores for each matched seller
+        for seller in matched_sellers:
+            seller_id = seller.get("_id")
+            
+            # BM25 score
+            bm25_score = bm25_scores_dict.get(seller_id, 0.0)
+            seller["bm25_score"] = bm25_score
+            
+            # District similarity score
+            seller["district_score"] = district_similarity_score(
+                district_input, 
+                seller.get("district", "")
             )
-        )
+            
+            # Commodity match score
+            seller["commodity_score"] = commodity_match_score(
+                crop_input,
+                seller.get("commodities", "")
+            )
 
+        # Step 5: Normalize scores
+        ratings = [s.get("rating", 5.0) for s in matched_sellers]
+        experiences = [s.get("years_of_experience", 5.0) for s in matched_sellers]
+        bm25_scores = [s.get("bm25_score", 0.0) for s in matched_sellers]
+        
+        min_rating = min(ratings) if ratings else 5.0
+        max_rating = max(ratings) if ratings else 5.0
+        min_exp = min(experiences) if experiences else 5.0
+        max_exp = max(experiences) if experiences else 5.0
+        max_bm25 = max(bm25_scores) if bm25_scores and max(bm25_scores) > 0 else 1.0
+
+        for seller in matched_sellers:
+            seller["rating_norm"] = normalize_value(
+                seller.get("rating", 5.0),
+                min_rating,
+                max_rating
+            )
+            seller["experience_norm"] = normalize_value(
+                seller.get("years_of_experience", 5.0),
+                min_exp,
+                max_exp
+            )
+            seller["bm25_norm"] = (seller.get("bm25_score", 0.0) / max_bm25) if max_bm25 > 0 else 0.5
+
+        # Step 6: Calculate final weighted score
+        # Weights: Rating (40%), District (25%), Commodity (20%), Experience (10%), BM25 (5%)
+        for seller in matched_sellers:
+            seller["final_score"] = (
+                seller.get("rating_norm", 0.5) * 0.40 +
+                seller.get("district_score", 0.3) * 0.25 +
+                seller.get("commodity_score", 0.5) * 0.20 +
+                seller.get("experience_norm", 0.5) * 0.10 +
+                seller.get("bm25_norm", 0.5) * 0.05
+            )
+
+        # Step 7: Sort by final score (descending)
+        matched_sellers.sort(key=lambda x: x.get("final_score", 0.0), reverse=True)
+
+        # Step 8: Prepare output
         result = []
-        for s in sellers:
-            fpc = s.get("fpcName") or s.get("_id")
-            district = s.get("district", "Unknown")
-            commodities = s.get("commodities", [])
-            commodities_str = ", ".join(commodities) if isinstance(commodities, list) else str(commodities)
-
+        for seller in matched_sellers:
+            commodities = seller.get("commodities", "")
+            if isinstance(commodities, list):
+                commodities_str = ", ".join([str(c) for c in commodities if c])
+            else:
+                commodities_str = str(commodities)
+            
+            match_percentage = round(seller.get("final_score", 0.0) * 100, 1)
+            
             result.append({
-                "FPC_Name": fpc,
-                "District": district,
+                "FPC_Name": seller.get("fpcName", seller.get("_id", "")),
+                "District": seller.get("district", ""),
                 "Commodities": commodities_str,
-                "fpc_name": fpc,
-                "fpc_id": s.get("_id"),
-                "crop": crop_input,
-                "region": region_input
+                "Rating": seller.get("rating", 5.0),
+                "Years_of_Experience": seller.get("years_of_experience", 5.0),
+                "Contact_Phone": seller.get("contact_phone", ""),
+                "Address": seller.get("address", ""),
+                "match_percentage": match_percentage,
+                # Additional fields for backward compatibility
+                "fpc_name": seller.get("fpcName", seller.get("_id", "")),
+                "fpc_id": seller.get("_id", "")
             })
 
         return jsonify(result), 200
 
     except Exception as e:
         print("RECOMMENDATION ERROR:", e)
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": "Recommendation failed"}), 500
 
 # -------------------------

@@ -146,11 +146,6 @@
   color: var(--color-button-text);
 }
 
-.loginBtn:hover,
-.logoutBtn:hover {
-  transform: translateY(-1px);
-}
-
 /* Hamburger styles */
 .hamburger {
   display: none;
