@@ -17,7 +17,7 @@ import pandas as pd
 import numpy as np
 import requests
 
-from src.scheme_engine.engine import recommend_scheme_single, df as SCHEME_DF
+from src.scheme_engine.engine import recommend_scheme_single, df as schemes_df
 
 
 warnings.filterwarnings("ignore")
@@ -42,7 +42,7 @@ INFURA_URL = os.getenv("INFURA_URL")
 PRIVATE_KEY = os.getenv("PRIVATE_KEY")
 CONTRACT_ADDRESS = os.getenv("CONTRACT_ADDRESS")
 PORT = int(os.getenv("PORT", "5000"))
-OPENWEATHER_KEY = os.getenv("OPENWEATHER_KEY")
+OPENWEATHER_KEY = os.getenv("OPENWEATHER_KEY") or os.getenv("OPENWEATHER_API") or os.getenv("WEATHER_API_KEY")
 
 ABI = [
     {
@@ -201,22 +201,41 @@ def is_central_ministry(text: str) -> bool:
     return text.startswith("ministry of") or "government of india" in text
 
 
+def _normalize_shown_schemes(shown) -> set:
+    """
+    Convert a list of scheme identifiers (strings or dicts) into a lowercase set.
+    Supports payloads like ["PM-KISAN", "XYZ"] or [{"scheme_name": "ABC"}, ...].
+    """
+    names = set()
+    for item in shown or []:
+        name = None
+        if isinstance(item, dict):
+            name = item.get("scheme_name") or item.get("name")
+        else:
+            name = str(item)
+        if name:
+            names.add(name.strip().lower())
+    return names
+
+
 def get_next_best_scheme(crop: str, state: str, exclude_list):
     crop = crop.lower().strip()
     state = state.lower().strip()
+    exclude_names = _normalize_shown_schemes(exclude_list)
 
     try:
         engine_res = recommend_scheme_single(crop, state)
-        best_name = engine_res["scheme_name"]
+        best_name = (engine_res or {}).get("scheme_name", "")
     except:
         engine_res = None
         best_name = None
 
-    if engine_res and best_name not in exclude_list:
+    if engine_res and best_name and best_name.lower().strip() not in exclude_names:
         return engine_res
 
-    df = SCHEME_DF.copy()
-    df = df[~df["scheme_name"].isin(exclude_list)]
+    df = schemes_df.copy()
+    df["scheme_name_lower"] = df["scheme_name"].fillna("").str.lower().str.strip()
+    df = df[~df["scheme_name_lower"].isin(exclude_names)]
 
     if df.empty:
         return None
@@ -225,10 +244,10 @@ def get_next_best_scheme(crop: str, state: str, exclude_list):
 
     for _, row in df.iterrows():
         score = 0
-        desc = row["description"].lower()
-        tags = row["tags"].lower()
-        sm = row["state_ministry"].lower()
-        name = row["scheme_name"].lower()
+        desc = str(row.get("description") or "").lower()
+        tags = str(row.get("tags") or "").lower()
+        sm = str(row.get("state_ministry") or "").lower()
+        name = str(row.get("scheme_name") or "").lower()
 
         if state in sm:
             score += 8000
@@ -524,6 +543,9 @@ def create_request():
                 fpc_id = seller_user.get("_id")
                 fpc_name_store = seller_user.get("fpcName", fpc_value)
 
+    if not fpc_id:
+        return jsonify({"error": "Seller (FPC) not found. Please check the name."}), 400
+
     request_id = str(uuid.uuid4())
     req_doc = {
         "id": request_id,
@@ -779,6 +801,98 @@ def weather_current():
     try:
         r = requests.get(url)
         data = r.json()
+        
+        if r.status_code != 200:
+             return jsonify(data), r.status_code
+
+        # Format for frontend
+        weather_main = data.get("weather", [{}])[0]
+        main_data = data.get("main", {})
+        rain_data = data.get("rain", {})
+        
+        formatted = {
+            "temp": main_data.get("temp", 0),
+            "humidity": main_data.get("humidity", 0),
+            "rain": rain_data.get("1h", 0) or rain_data.get("3h", 0),
+            "icon": weather_main.get("icon", "01d"),
+            "condition": weather_main.get("main", "Clear"),
+            "description": weather_main.get("description", "")
+        }
+        
+        return jsonify(formatted), 200
+    except Exception as e:
+        print("WEATHER CURRENT ERROR:", e)
+        return jsonify({"error": str(e)}), 500
+
+
+# ============================================================
+# LOCATION PROXY (Fix for CORS/User-Agent)
+# ============================================================
+@app.get("/api/location/reverse")
+def location_reverse():
+    lat = request.args.get("lat")
+    lon = request.args.get("lon")
+    if not lat or not lon:
+        return jsonify({"error": "Missing lat/lon"}), 400
+
+    # Nominatim requires a User-Agent
+    headers = {
+        "User-Agent": "KrishiMitra/1.0 (educational project)"
+    }
+    url = f"https://nominatim.openstreetmap.org/reverse?lat={lat}&lon={lon}&format=json"
+
+    try:
+        r = requests.get(url, headers=headers)
+        if r.status_code != 200:
+             return jsonify({"error": "Nominatim error", "details": r.text}), r.status_code
+        return jsonify(r.json()), 200
+    except Exception as e:
+        print("LOCATION REVERSE ERROR:", e)
+        return jsonify({"error": str(e)}), 500
+
+
+@app.get("/api/location/ip")
+def location_ip():
+    # Try to get client IP if possible, or just use server's IP (often same in dev)
+    # ipapi.co/json (without IP) returns the caller's location.
+    # Since we are calling from server, it returns server's location.
+    # For local dev, this is fine.
+    try:
+        # Using ip-api.com as it's often more lenient with free tier than ipapi.co
+        # But let's try to stick to what the frontend was using if possible, or switch to a better free one.
+        # ip-api.com/json is http only for free, https requires paid.
+        # ipapi.co is https.
+        
+        headers = {
+            "User-Agent": "KrishiMitra/1.0"
+        }
+        r = requests.get("https://ipapi.co/json/", headers=headers)
+        if r.status_code != 200:
+            # Fallback to ip-api.com if ipapi.co fails (429 etc)
+            r = requests.get("http://ip-api.com/json/")
+        
+        data = r.json()
+        
+        # Normalize keys for frontend
+        # ipapi.co uses 'latitude', 'longitude'
+        # ip-api.com uses 'lat', 'lon'
+        lat = data.get("latitude") or data.get("lat")
+        lon = data.get("longitude") or data.get("lon")
+        city = data.get("city")
+        region = data.get("region") or data.get("regionName") # ip-api uses regionName
+        
+        normalized = {
+            "lat": lat,
+            "lon": lon,
+            "city": city,
+            "region": region,
+            "raw": data # keep raw just in case
+        }
+        
+        return jsonify(normalized), 200
+    except Exception as e:
+        print("LOCATION IP ERROR:", e)
+        return jsonify({"error": str(e)}), 500
 
         result = {
             "temp": data["main"]["temp"],
@@ -800,10 +914,14 @@ def weather_current():
 # ============================================================
 @app.post("/api/scheme/bycrop")
 def scheme_bycrop():
+    """Return the next best scheme for a given crop/state combination."""
     data = request.get_json() or {}
-    crop = data.get("crop", "").strip()
-    state = data.get("state", "").strip()
+    crop = (data.get("crop") or "").strip()
+    state = (data.get("state") or "").strip()
     shown = data.get("shown_schemes", [])
+
+    if not crop or not state:
+        return jsonify({"error": "Missing crop or state"}), 400
 
     scheme_dict = get_next_best_scheme(crop, state, shown)
 
@@ -841,6 +959,22 @@ def scheme_auto():
         "state": state,
         "recommended_scheme": scheme_dict
     }), 200
+    
+@app.get("/api/scheme/list")
+def list_all_schemes():
+    """Returns a list of all available schemes (limited sample)."""
+    try:
+        # Display a manageable number of schemes with key information
+        # Select important columns and convert to a list of dictionaries
+        display_cols = ["scheme_name", "state_ministry", "description", "scheme_link"]
+        
+        # Return the top 20 schemes from the loaded DataFrame for efficiency
+        limited_schemes = schemes_df.head(20).copy()
+        
+        return jsonify(limited_schemes[display_cols].to_dict(orient="records")), 200
+    except Exception as e:
+        print(f"[ERROR] Listing schemes failed: {e}")
+        return jsonify({"error": "Internal server error while listing schemes"}), 500
 
 
 # ============================================================

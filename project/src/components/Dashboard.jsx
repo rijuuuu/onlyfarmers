@@ -31,9 +31,15 @@ export default function Dashboard() {
   const [weatherNow, setWeatherNow] = React.useState(null);
   const [weatherAlert, setWeatherAlert] = React.useState(null);
 
+  /* ----------------------------------------
+     WEATHER
+  -----------------------------------------*/
+
   const fetchWeatherForecast = async (lat, lon) => {
     try {
-      const res = await fetch(`${BASE_URL}/api/weather/forecast?lat=${lat}&lon=${lon}`);
+      const res = await fetch(
+        `${BASE_URL}/api/weather/forecast?lat=${lat}&lon=${lon}`
+      );
       const data = await res.json();
 
       if (res.ok && data.forecast) {
@@ -64,11 +70,11 @@ export default function Dashboard() {
 
   const fetchCurrentWeather = async (lat, lon) => {
     try {
-      const res = await fetch(`${BASE_URL}/api/weather/current?lat=${lat}&lon=${lon}`);
+      const res = await fetch(
+        `${BASE_URL}/api/weather/current?lat=${lat}&lon=${lon}`
+      );
       const data = await res.json();
-      if (res.ok) {
-        setWeatherNow(data);
-      }
+      if (res.ok) setWeatherNow(data);
     } catch (err) {
       console.log("Current weather error:", err);
     }
@@ -76,7 +82,9 @@ export default function Dashboard() {
 
   const fetchWeatherAlerts = async (lat, lon) => {
     try {
-      const res = await fetch(`${BASE_URL}/api/weather/forecast?lat=${lat}&lon=${lon}`);
+      const res = await fetch(
+        `${BASE_URL}/api/weather/forecast?lat=${lat}&lon=${lon}`
+      );
       const data = await res.json();
       if (res.ok) {
         const alerts = data.alerts || null;
@@ -86,6 +94,10 @@ export default function Dashboard() {
       console.log("Weather alert error:", err);
     }
   };
+
+  /* ----------------------------------------
+      CROPS
+  -----------------------------------------*/
 
   const fetchCrops = async () => {
     try {
@@ -97,7 +109,15 @@ export default function Dashboard() {
     }
   };
 
-  const fetchSchemeForCrop = async (cropText, cropDate = null, shownList = []) => {
+  /* ----------------------------------------
+      GOVT SCHEMES (FIXED)
+  -----------------------------------------*/
+
+  const fetchSchemeForCrop = async (
+    cropText,
+    cropDate = null,
+    shownList = []
+  ) => {
     if (!state) return null;
 
     try {
@@ -111,15 +131,17 @@ export default function Dashboard() {
 
       const data = await res.json();
 
-      if (res.ok && data.recommended_scheme) {
+      const scheme = data?.recommended_scheme || data;
+
+      if (res.ok && scheme?.scheme_name) {
         return {
-          ...data.recommended_scheme,
+          ...scheme,
           crop: cropText,
           cropDate: cropDate || new Date().toISOString(),
         };
-      } else {
-        return null;
       }
+
+      return null;
     } catch (err) {
       console.log("Scheme fetch error:", err);
       return null;
@@ -130,19 +152,19 @@ export default function Dashboard() {
     if (!state || farmList.length === 0) return;
 
     const localShown = [];
-    const loadedSchemes = [];
+    const loaded = [];
 
     for (const item of farmList) {
       if (item && item.text) {
         const sch = await fetchSchemeForCrop(item.text, item.date, localShown);
         if (sch) {
-          loadedSchemes.push(sch);
-          localShown.push(sch.scheme_name);
+          loaded.push(sch);
+          localShown.push({ scheme_name: sch.scheme_name });
         }
       }
     }
 
-    setSchemes(loadedSchemes);
+    setSchemes(loaded);
   };
 
   const addFarmDetail = async () => {
@@ -162,14 +184,22 @@ export default function Dashboard() {
         setFarmInput("");
         setFarmDate("");
 
-        const shownNow = schemes.map((s) => s.scheme_name);
-        const sch = await fetchSchemeForCrop(payload.text, payload.date, shownNow);
+        const shownNow = schemes.map((s) => ({ scheme_name: s.scheme_name }));
+        const sch = await fetchSchemeForCrop(
+          payload.text,
+          payload.date,
+          shownNow
+        );
         if (sch) setSchemes((prev) => [sch, ...prev]);
       }
     } catch (err) {
       console.log("Save error:", err);
     }
   };
+
+  /* ----------------------------------------
+      USE EFFECTS
+  -----------------------------------------*/
 
   React.useEffect(() => {
     fetchCrops();
@@ -182,9 +212,71 @@ export default function Dashboard() {
     }
   }, [state, farmList]);
 
+  /* ----------------------------------------
+      LOCATION
+  -----------------------------------------*/
+
+  const applyLocation = (lat, lon, locationInfo = {}) => {
+    const {
+      district: districtInput,
+      city,
+      county,
+      region,
+      state: stateInput,
+      state_district,
+      suburb,
+    } = locationInfo;
+
+    const resolvedDistrict =
+      districtInput ||
+      city ||
+      suburb ||
+      county ||
+      state_district ||
+      region ||
+      "";
+
+    const resolvedState = stateInput || region || "";
+
+    if (resolvedDistrict) setDistrict(resolvedDistrict);
+    if (resolvedState) setState(resolvedState);
+
+    if (lat && lon) {
+      fetchWeatherAlerts(lat, lon);
+      fetchWeatherForecast(lat, lon);
+      fetchCurrentWeather(lat, lon);
+    }
+  };
+
+  const fetchLocationFallback = async () => {
+    try {
+      // FIX: Use backend proxy to avoid CORS and get better accuracy
+      const res = await fetch(`${BASE_URL}/api/location/ip`);
+      if (!res.ok) throw new Error("IP lookup failed");
+      const data = await res.json();
+
+      // Backend returns { lat, lon, city, region, ... }
+      const lat = data.lat;
+      const lon = data.lon;
+
+      applyLocation(lat, lon, {
+        district: data.city,
+        region: data.region,
+        state: data.region,
+      });
+      setError(
+        "Using approximate location (IP-based). Enable GPS for accuracy."
+      );
+    } catch (err) {
+      console.log("Fallback location error:", err);
+      setError("Unable to determine location. Please enter state manually.");
+    }
+  };
+
   const getLocation = () => {
     if (!navigator.geolocation) {
-      setError("Geolocation not supported");
+      setError("Geolocation not supported, using approximate location.");
+      fetchLocationFallback();
       return;
     }
 
@@ -192,30 +284,37 @@ export default function Dashboard() {
       async (pos) => {
         const { latitude, longitude } = pos.coords;
         try {
+          // FIX: Use backend proxy to handle User-Agent requirements
           const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`
+            `${BASE_URL}/api/location/reverse?lat=${latitude}&lon=${longitude}`
           );
           const data = await res.json();
 
-          setDistrict(
-            data.address.city_district ||
+          applyLocation(latitude, longitude, {
+            district:
+              data.address.city_district ||
               data.address.suburb ||
               data.address.county ||
               data.address.state_district ||
-              data.address.city
-          );
-          setState(data.address.state);
-
-          fetchWeatherAlerts(latitude, longitude);
-          fetchWeatherForecast(latitude, longitude);
-          fetchCurrentWeather(latitude, longitude);
-        } catch {
-          setError("Cannot fetch location data");
+              data.address.city,
+            state: data.address.state,
+          });
+        } catch (err) {
+          console.log("Reverse geocode error:", err);
+          setError("Cannot fetch precise location, using fallback.");
+          fetchLocationFallback();
         }
       },
-      () => setError("Location permission denied")
+      () => {
+        setError("Location permission denied, using approximate location.");
+        fetchLocationFallback();
+      }
     );
   };
+
+  /* ----------------------------------------
+      HELPERS
+  -----------------------------------------*/
 
   const getTimeLeftLabel = (targetDate) => {
     const end = new Date(targetDate).getTime();
@@ -250,35 +349,86 @@ export default function Dashboard() {
     return Math.min(Math.max(progress * 100, 0), 100);
   };
 
-  const sortedFarmList = [...farmList].sort((a, b) => new Date(b.date) - new Date(a.date));
+  const sortedFarmList = [...farmList].sort(
+    (a, b) => new Date(b.date) - new Date(a.date)
+  );
+
+  /* ----------------------------------------
+      CHART
+  -----------------------------------------*/
 
   const ForecastChart = ({ data }) => (
-    <ResponsiveContainer width="100%" height="100%">
-      <LineChart data={data} margin={{ top: 10, right: 20, bottom: 10, left: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="rgba(113, 113, 113, 0.77)" />
-        <XAxis dataKey="time" tick={{ fontSize: 11 }} stroke="rgba(255, 255, 255, 0.77)" />
-        <YAxis yAxisId="left" tick={{ fontSize: 11 }} stroke="rgba(255, 255, 255, 0.77)" />
-        <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} stroke="rgba(255, 255, 255, 0.77)" />
+    <ResponsiveContainer width="100%" height="100%" minHeight={300}>
+      <LineChart
+        data={data}
+        margin={{ top: 10, right: 20, bottom: 10, left: 0 }}
+      >
+        <CartesianGrid
+          strokeDasharray="3 3"
+          stroke="rgba(113, 113, 113, 0.77)"
+        />
+        <XAxis
+          dataKey="time"
+          tick={{ fontSize: 11 }}
+          stroke="rgba(255, 255, 255, 0.77)"
+        />
+        <YAxis
+          yAxisId="left"
+          tick={{ fontSize: 11 }}
+          stroke="rgba(255, 255, 255, 0.77)"
+        />
+        <YAxis
+          yAxisId="right"
+          orientation="right"
+          tick={{ fontSize: 11 }}
+          stroke="rgba(255, 255, 255, 0.77)"
+        />
         <Tooltip />
-        <Line yAxisId="left" type="monotone" dataKey="temp" stroke="#ff5722" strokeWidth={2} dot={false} />
-        <Line yAxisId="right" type="monotone" dataKey="rain" stroke="#2196f3" strokeWidth={2} dot={false} />
-        <Line yAxisId="left" type="monotone" dataKey="humidity" stroke="#4caf50" strokeWidth={2} dot={false} />
+        <Line
+          yAxisId="left"
+          type="monotone"
+          dataKey="temp"
+          stroke="#ff5722"
+          strokeWidth={2}
+          dot={false}
+        />
+        <Line
+          yAxisId="right"
+          type="monotone"
+          dataKey="rain"
+          stroke="#2196f3"
+          strokeWidth={2}
+          dot={false}
+        />
+        <Line
+          yAxisId="left"
+          type="monotone"
+          dataKey="humidity"
+          stroke="#4caf50"
+          strokeWidth={2}
+          dot={false}
+        />
         <Legend verticalAlign="bottom" height={30} />
       </LineChart>
     </ResponsiveContainer>
   );
 
+  /* ----------------------------------------
+      UI
+  -----------------------------------------*/
+
   return (
     <div className="dashboard-wrapper">
       <div className="dashboard">
         <div className="grid-container">
-
-          {/* USER */}
+          {/* USER CARD */}
           <div className="dashcard name-location">
             <h1>Hello, {userID}</h1>
             <div className="loc-row">
               <FaLocationDot />
-              <p>{district && state ? `${district}, ${state}` : "Fetching..."}</p>
+              <p>
+                {district && state ? `${district}, ${state}` : "Fetching..."}
+              </p>
             </div>
 
             {weatherNow && (
@@ -289,17 +439,20 @@ export default function Dashboard() {
                     alt="icon"
                     className="cw-icon"
                   />
-                  <span className="cw-temp">{Math.round(weatherNow.temp)}°C</span>
+                  <span className="cw-temp">
+                    {Math.round(weatherNow.temp)}°C
+                  </span>
                 </div>
                 <p className="cw-extra">
                   💧 {weatherNow.humidity}% &nbsp;|&nbsp; 🌧 {weatherNow.rain} mm
                 </p>
               </div>
             )}
+
             {error && <p style={{ color: "red" }}>{error}</p>}
           </div>
 
-          {/* WEATHER */}
+          {/* WEATHER ALERTS */}
           <div className="dashcard weather">
             <h3>Weather Alerts</h3>
             <div className="weather-grid">
@@ -312,7 +465,9 @@ export default function Dashboard() {
                       className="weather-icon-large"
                     />
                     <p className="weather-cond-text">
-                      {weatherNow.condition.replace(/\b\w/g, c => c.toUpperCase())}
+                      {weatherNow.condition.replace(/\b\w/g, (c) =>
+                        c.toUpperCase()
+                      )}
                     </p>
                   </>
                 ) : (
@@ -324,7 +479,9 @@ export default function Dashboard() {
                 {weatherAlert ? (
                   <>
                     <p className="alert-title">⚠ {weatherAlert.event}</p>
-                    <p className="alert-desc">{weatherAlert.description.slice(0, 80)}...</p>
+                    <p className="alert-desc">
+                      {weatherAlert.description.slice(0, 80)}...
+                    </p>
                   </>
                 ) : (
                   <p className="no-alerts">No weather alerts right now 🌤</p>
@@ -337,15 +494,18 @@ export default function Dashboard() {
           <div className="dashcard name-location-2">
             <div className="farm-wrapper">
               <h3>
-                Manage your <strong>Crops</strong>
+                Manage your<strong>Crops</strong>
               </h3>
+
               <div className="farm-input-row">
                 <input
                   type="text"
                   className="farm-input"
                   value={farmInput}
                   onChange={(e) => setFarmInput(e.target.value)}
-                  placeholder="Enter crop name"
+                  placeholder="Crop name"
+                  // FIX: Change 'width:10px;' to the JavaScript object: {{width: '10px'}}
+                  style={{ width: "10px" }}
                 />
                 <input
                   type="date"
@@ -361,13 +521,13 @@ export default function Dashboard() {
               <ul className="farm-list">
                 {sortedFarmList.map((item, i) => (
                   <li key={i} className="farm-item">
-                    <span style={{ fontWeight: "bold", fontSize: "16px" }}>{item.text}</span>
-                    <span style={{ marginLeft: "10px", color: "#444" }}>
+                    <span className="farm-name">{item.text}</span>
+                    <span className="farm-time">
                       {getTimeLeftLabel(item.date)}
                     </span>
-                    <div className="progress-bar">
+                    <div className="farm-progress">
                       <div
-                        className="progress-fill"
+                        className="farm-progress-fill"
                         style={{ width: `${getProgressPercent(item.date)}%` }}
                       ></div>
                     </div>
@@ -377,7 +537,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* SCHEMES */}
+          {/* GOVT SCHEMES */}
           <div className="dashcard schemes">
             <h3>Govt. Schemes</h3>
             {schemes.length === 0 ? (

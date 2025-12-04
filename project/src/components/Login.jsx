@@ -45,7 +45,7 @@ export default function Login() {
         localStorage.setItem("uniqueID", uniqueID);
         localStorage.setItem("userRole", result.role || "");
 
-        navigate("/home", { replace: true });  // 🔥 FIX — ABSOLUTE PATH ALWAYS
+        navigate("/home", { replace: true }); // 🔥 FIX — ABSOLUTE PATH ALWAYS
       } else {
         setError(result.error || "Invalid login credentials");
       }

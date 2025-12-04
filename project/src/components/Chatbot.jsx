@@ -4,7 +4,7 @@ import "../style/Chatbot.css";
 
 export default function ChatBox() {
   const [isOpen, setIsOpen] = useState(true);
-  const [userClosed, setUserClosed] = useState(false);  // FIX
+  const [userClosed, setUserClosed] = useState(false); // FIX
   const [message, setMessage] = useState("");
   const [chatHistory, setChatHistory] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -68,7 +68,10 @@ export default function ChatBox() {
       const data = await res.json();
 
       if (res.ok) {
-        setChatHistory((prev) => [...prev, { sender: "bot", text: data.reply }]);
+        setChatHistory((prev) => [
+          ...prev,
+          { sender: "bot", text: data.reply },
+        ]);
       } else {
         setError(data.error || "Server error");
       }
@@ -81,12 +84,12 @@ export default function ChatBox() {
 
   const closeChat = () => {
     setIsOpen(false);
-    setUserClosed(true);        // FIX — prevents reopening
+    setUserClosed(true); // FIX — prevents reopening
   };
 
   const openChat = () => {
     setIsOpen(true);
-    setUserClosed(false);       // FIX — allows auto behavior again
+    setUserClosed(false); // FIX — allows auto behavior again
   };
 
   return (
@@ -101,7 +104,9 @@ export default function ChatBox() {
         <div className="chatbot">
           <div className="chat-header">
             <div className="chat-title">KrishiMitra Chatbot</div>
-            <button className="close-btn" onClick={closeChat}>✕</button>
+            <button className="close-btn" onClick={closeChat}>
+              ✕
+            </button>
           </div>
 
           <div className="msgs" ref={msgsRef}>
